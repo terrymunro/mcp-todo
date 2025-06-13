@@ -1,114 +1,25 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import * as fs from "fs/promises";
-import * as path from "path";
-
-// --- Configuration ---
-export const TODO_DIR = path.join(process.cwd(), "todos");
+import {
+  initializeProjectContext,
+  getTodoById,
+  saveTodo,
+  getTodosByListId,
+  getCurrentProject,
+  updateProject,
+  getTodoListById,
+  getAllTodoListsForCurrentProject,
+  getCurrentDefaultTodoListId,
+} from "./database.js";
 
 // --- Type Definitions ---
 const TodoStatusSchema = z.enum(["completed", "pending", "in_progress"]);
 const TodoPrioritySchema = z.enum(["high", "medium", "low"]);
 
-const TodoSchema = z.object({
-  id: z.number(),
-  content: z.string(),
-  status: TodoStatusSchema.default("pending"),
-  priority: TodoPrioritySchema.default("medium"),
-});
+// Export schemas for testing and validation
+export { TodoStatusSchema, TodoPrioritySchema };
 
-export type Todo = z.infer<typeof TodoSchema>;
-
-// Export schemas for testing
-export { TodoSchema, TodoStatusSchema, TodoPrioritySchema };
-
-// --- File System Storage Logic ---
-
-/**
- * Ensures the directory for storing todo items exists.
- */
-export async function ensureTodoDirectoryExists(): Promise<void> {
-  try {
-    await fs.mkdir(TODO_DIR, { recursive: true });
-    console.log(`Todo directory ensured at: ${TODO_DIR}`);
-  } catch (error) {
-    console.error("Error creating todo directory:", error);
-    throw error;
-  }
-}
-
-/**
- * Writes a todo item to a JSON file.
- * @param todo The todo item to save.
- */
-export async function writeTodoToFile(todo: Todo): Promise<void> {
-  const filePath = path.join(TODO_DIR, `${todo.id}.json`);
-  try {
-    await fs.writeFile(filePath, JSON.stringify(todo, null, 2), "utf-8");
-    console.log(`Successfully wrote todo ${todo.id} to ${filePath}`);
-  } catch (error) {
-    console.error(`Error writing todo ${todo.id}:`, error);
-    throw error;
-  }
-}
-
-/**
- * Reads a single todo item from a JSON file.
- * @param id The ID of the todo item to read.
- * @returns The todo item or null if not found.
- */
-export async function readTodoFromFile(id: number): Promise<Todo | null> {
-  const filePath = path.join(TODO_DIR, `${id}.json`);
-  try {
-    const data = await fs.readFile(filePath, "utf-8");
-    const todo = JSON.parse(data);
-    return TodoSchema.parse(todo); // Validate the data against the schema
-  } catch (error: any) {
-    if (error.code === "ENOENT") {
-      // File does not exist
-      return null;
-    }
-    console.error(`Error reading or parsing todo ${id}:`, error);
-    throw error;
-  }
-}
-
-/**
- * Reads all todo items from the directory.
- * @returns An array of all todo items.
- */
-export async function readAllTodos(): Promise<Todo[]> {
-  try {
-    const files = await fs.readdir(TODO_DIR);
-    const todoPromises = files
-      .filter((file) => file.endsWith(".json"))
-      .map(async (file) => {
-        const id = parseInt(path.basename(file, ".json"), 10);
-        if (!isNaN(id)) {
-          try {
-            return await readTodoFromFile(id);
-          } catch (error) {
-            // Gracefully handle corrupted files by returning null
-            console.error(`Error reading todo ${id}:`, error);
-            return null;
-          }
-        }
-        return null;
-      });
-
-    const todosWithNulls = await Promise.all(todoPromises);
-    // Filter out any null results which could happen from parsing errors or non-matching files
-    return todosWithNulls.filter((t): t is Todo => t !== null);
-  } catch (error: any) {
-    if (error.code === "ENOENT") {
-      // If the directory doesn't exist, there are no todos.
-      return [];
-    }
-    console.error("Error reading all todos:", error);
-    throw error;
-  }
-}
 
 // --- Tool Handlers ---
 
@@ -119,16 +30,18 @@ export async function handleTodoWrite({
   id,
   content,
   priority,
-  status
+  status,
+  todo_list_id
 }: {
   id: number;
   content?: string;
   priority?: "high" | "medium" | "low";
   status?: "completed" | "pending" | "in_progress";
+  todo_list_id?: number;
 }) {
   try {
     // Check if the item already exists to preserve its fields if not provided
-    const existingTodo = await readTodoFromFile(id);
+    const existingTodo = await getTodoById(id);
 
     // For new todos, content is required
     if (!existingTodo && !content) {
@@ -143,25 +56,25 @@ export async function handleTodoWrite({
     }
 
     // For updates, at least one field must be provided
-    if (existingTodo && !content && !priority && !status) {
+    if (existingTodo && !content && !priority && !status && !todo_list_id) {
       return {
         content: [
           {
             type: "text" as const,
-            text: "At least one field (content, priority, or status) must be provided for updates.",
+            text: "At least one field (content, priority, status, or todo_list_id) must be provided for updates.",
           },
         ],
       };
     }
 
-    const todo: Todo = {
+    const savedTodo = await saveTodo({
       id,
-      content: content || existingTodo?.content || "",
-      priority: priority || existingTodo?.priority || "medium",
-      status: status || existingTodo?.status || "pending",
-    };
+      content,
+      priority,
+      status,
+      todo_list_id,
+    });
 
-    await writeTodoToFile(todo);
     return {
       content: [
         {
@@ -176,7 +89,7 @@ export async function handleTodoWrite({
       content: [
         {
           type: "text" as const,
-          text: "Failed to write todo.",
+          text: `Failed to write todo: ${error instanceof Error ? error.message : "Unknown error"}`,
         },
       ],
     };
@@ -210,9 +123,12 @@ export function createTodoServer(): McpServer {
       status: TodoStatusSchema.optional().describe(
         "Status: 'pending', 'in_progress', or 'completed'. Defaults to 'pending'.",
       ),
+      todo_list_id: z.number().optional().describe(
+        "The ID of the todo list. Defaults to the current project's default todo list.",
+      ),
     },
-    async ({ id, content, priority, status }) => {
-      return await handleTodoWrite({ id, content, priority, status });
+    async ({ id, content, priority, status, todo_list_id }) => {
+      return await handleTodoWrite({ id, content, priority, status, todo_list_id });
     }
   );
 
@@ -222,10 +138,13 @@ export function createTodoServer(): McpServer {
     "Retrieve a specific todo item by its ID. Returns the complete todo object with all fields (id, content, status, priority).\n\nExample:\n• Get todo: {id: 1}\n  Returns: {\"id\": 1, \"content\": \"Fix bug\", \"status\": \"pending\", \"priority\": \"high\"}",
     {
       id: z.number().describe("The ID of the todo item to retrieve."),
+      todo_list_id: z.number().optional().describe(
+        "The ID of the todo list to search in. Optional - the todo will be found regardless of which list it's in.",
+      ),
     },
     async ({ id }) => {
       try {
-        const todo = await readTodoFromFile(id);
+        const todo = await getTodoById(id);
         if (todo) {
           return {
             content: [
@@ -251,7 +170,7 @@ export function createTodoServer(): McpServer {
           content: [
             {
               type: "text" as const,
-              text: `Failed to read todo ${id}.`,
+              text: `Failed to read todo ${id}: ${error instanceof Error ? error.message : "Unknown error"}`,
             },
           ],
         };
@@ -263,18 +182,14 @@ export function createTodoServer(): McpServer {
   server.tool(
     "todo-list",
     "List all todo items sorted by priority (high → medium → low). Returns an array of all todos with complete details.\n\nExample:\n• No parameters needed\n  Returns: {\"todos\": [{\"id\": 1, \"content\": \"Fix bug\", \"status\": \"pending\", \"priority\": \"high\"}, ...]}",
-    {},
-    async () => {
+    {
+      todo_list_id: z.number().optional().describe(
+        "The ID of the todo list to retrieve todos from. Defaults to the current project's default todo list.",
+      ),
+    },
+    async ({ todo_list_id }) => {
       try {
-        const todos = await readAllTodos();
-
-        // Define the order for sorting by priority
-        const priorityOrder = { high: 0, medium: 1, low: 2 };
-
-        // Sort the todos: high -> medium -> low
-        todos.sort(
-          (a, b) => priorityOrder[a.priority] - priorityOrder[b.priority],
-        );
+        const todos = await getTodosByListId(todo_list_id);
 
         return {
           content: [
@@ -290,7 +205,196 @@ export function createTodoServer(): McpServer {
           content: [
             {
               type: "text" as const,
-              text: "Failed to list todos.",
+              text: `Failed to list todos: ${error instanceof Error ? error.message : "Unknown error"}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Tool to get current project details
+  server.tool(
+    "project-get",
+    "Get the current project details including name, location, and default todo list.\n\nExample:\n• No parameters needed\n  Returns: {\"id\": 1, \"name\": \"My Project\", \"location\": \"/path/to/project\", \"default_todo_list_id\": 1}",
+    {},
+    async () => {
+      try {
+        const currentProject = await getCurrentProject();
+        if (currentProject) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: JSON.stringify(currentProject, null, 2),
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: "No current project found.",
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        console.error("Error in project-get handler:", error);
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Failed to get project: ${error instanceof Error ? error.message : "Unknown error"}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Tool to update current project
+  server.tool(
+    "project-update",
+    "Update the current project's name or default todo list.\n\nExamples:\n• Update name: {name: \"New Project Name\"}\n• Update default todo list: {default_todo_list_id: 2}\n• Update both: {name: \"New Name\", default_todo_list_id: 2}",
+    {
+      name: z.string().optional().describe("The new name for the project."),
+      default_todo_list_id: z.number().optional().describe("The ID of the todo list to set as default."),
+    },
+    async ({ name, default_todo_list_id }) => {
+      try {
+        const currentProject = await getCurrentProject();
+        if (!currentProject) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: "No current project found.",
+              },
+            ],
+          };
+        }
+
+        if (!name && !default_todo_list_id) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: "At least one field (name or default_todo_list_id) must be provided for updates.",
+              },
+            ],
+          };
+        }
+
+        const updatedProject = await updateProject(currentProject.id, {
+          name,
+          default_todo_list_id,
+        });
+
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Project updated successfully: ${JSON.stringify(updatedProject, null, 2)}`,
+            },
+          ],
+        };
+      } catch (error) {
+        console.error("Error in project-update handler:", error);
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Failed to update project: ${error instanceof Error ? error.message : "Unknown error"}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Tool to list all todo lists
+  server.tool(
+    "todo_list-list",
+    "List all todo lists for the current project.\n\nExample:\n• No parameters needed\n  Returns: {\"todo_lists\": [{\"id\": 1, \"name\": \"Default\", \"description\": \"...\", \"num_completed\": 5, \"total_count\": 10}, ...]}",
+    {},
+    async () => {
+      try {
+        const todoLists = await getAllTodoListsForCurrentProject();
+
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify({ todo_lists: todoLists }, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        console.error("Error in todo_list-list handler:", error);
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Failed to list todo lists: ${error instanceof Error ? error.message : "Unknown error"}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Tool to get details of a specific todo list
+  server.tool(
+    "todo_list-get",
+    "Get details of a specific todo list by ID, or get the default todo list if no ID provided.\n\nExamples:\n• Get specific list: {id: 1}\n• Get default list: {} (no parameters)",
+    {
+      id: z.number().optional().describe("The ID of the todo list to retrieve. If not provided, returns the current project's default todo list."),
+    },
+    async ({ id }) => {
+      try {
+        const todoListId = id || getCurrentDefaultTodoListId();
+        
+        if (!todoListId) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: "No todo list ID provided and no default todo list available.",
+              },
+            ],
+          };
+        }
+
+        const todoList = await getTodoListById(todoListId);
+        
+        if (todoList) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: JSON.stringify(todoList, null, 2),
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `Todo list with ID ${todoListId} not found.`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        console.error("Error in todo_list-get handler:", error);
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Failed to get todo list: ${error instanceof Error ? error.message : "Unknown error"}`,
             },
           ],
         };
@@ -305,8 +409,8 @@ export function createTodoServer(): McpServer {
  * Main function to initialize and start the MCP server.
  */
 export async function main() {
-  // Ensure the storage directory exists before starting the server
-  await ensureTodoDirectoryExists();
+  // Initialize the database and project context
+  await initializeProjectContext();
 
   const server = createTodoServer();
   const transport = new StdioServerTransport();
@@ -314,7 +418,7 @@ export async function main() {
   console.log("Starting MCP Todo Server...");
   await server.connect(transport);
   console.log("MCP Todo Server is running.");
-  console.log("Available tools: todo-write, todo-read, todo-list");
+  console.log("Available tools: todo-write, todo-read, todo-list, project-get, project-update, todo_list-list, todo_list-get");
 }
 
 // Start the server only if this is the main module
