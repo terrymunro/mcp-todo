@@ -7,7 +7,13 @@
     "start": "bun run index.ts",
     "typecheck": "bun run tsc --noEmit",
     "test": "bun test",
-    "test:watch": "bun test --watch"
+    "test:watch": "bun test --watch",
+    "db:generate": "drizzle-kit generate:sqlite",
+    "db:migrate": "drizzle-kit up:sqlite",
+    "db:migrate-run": "bun run migrate.ts",
+    "db:push": "drizzle-kit push:sqlite",
+    "db:studio": "drizzle-kit studio",
+    "db:check": "drizzle-kit check:sqlite"
   },
   "devDependencies": {
     "@types/bun": "latest",

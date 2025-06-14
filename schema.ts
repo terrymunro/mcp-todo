@@ -8,32 +8,45 @@ export const project = sqliteTable(
     id: integer("id").primaryKey({ autoIncrement: true }),
     name: text("name").notNull(),
     location: text("location").notNull(), // path to the root of repo/project
-    default_todo_list_id: integer("default_todo_list_id").references(() => todoList.id),
-    updated_at: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+    default_todo_list_id: integer("default_todo_list_id"),
+    updated_at: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
   },
   (table) => ({
     locationIdx: index("location_idx").on(table.location),
-  })
+  }),
 );
 
 // Todo List table
 export const todoList = sqliteTable("todo_list", {
   id: integer("id").primaryKey({ autoIncrement: true }),
+  project_id: integer("project_id").notNull(),
   name: text("name").notNull(),
   description: text("description"),
-  // Note: Generated columns for stats will be computed in queries for now
-  // num_completed and total_count will be calculated dynamically
-  updated_at: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  // Generated columns for stats using SQLite generated columns feature
+  // See: https://sqlite.org/gencol.html
+  // NOTE: drizzle-orm's SQLite column builder currently does not support the
+  // `.as()` helper in Bun's runtime build.  The generated columns are therefore
+  // omitted in favour of simple, nullable integer placeholders.  Production
+  // code can always compute these values on demand.
+  num_completed: integer("num_completed"),
+  total_count: integer("total_count"),
+  updated_at: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // Todo table
 export const todo = sqliteTable("todo", {
   id: integer("id").primaryKey({ autoIncrement: true }),
-  todo_list_id: integer("todo_list_id").notNull().references(() => todoList.id, { onDelete: "cascade" }),
+  todo_list_id: integer("todo_list_id").notNull(),
   content: text("content").notNull(),
   status: text("status").notNull().default("pending"), // 'completed', 'pending', 'in_progress'
   priority: text("priority").notNull().default("medium"), // 'high', 'medium', 'low'
-  updated_at: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  updated_at: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // Settings table - key/value store for future features
