@@ -19,20 +19,20 @@
     "db:check": "drizzle-kit check:sqlite"
   },
   "devDependencies": {
-    "@types/bun": "latest",
+    "@types/bun": "^1.2.16",
     "@typescript-eslint/eslint-plugin": "^8.34.0",
     "@typescript-eslint/parser": "^8.34.0",
-    "drizzle-kit": "^0.20.14",
+    "drizzle-kit": "^0.31.1",
     "eslint": "^9.29.0",
     "eslint-plugin-drizzle": "^0.2.3",
     "eslint-plugin-import": "^2.31.0"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^5.8.3"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.1",
-    "drizzle-orm": "^0.30.8",
-    "zod": "^3.25.58"
+    "@modelcontextprotocol/sdk": "^1.12.3",
+    "drizzle-orm": "^0.44.2",
+    "zod": "^3.25.64"
   }
 }

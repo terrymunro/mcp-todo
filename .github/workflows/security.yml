@@ -1,0 +1,108 @@
+name: Security & Dependency Scanning
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run security scans weekly on Sundays at 2 AM UTC
+    - cron: "0 2 * * 0"
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  security-scan:
+    name: Security & Dependencies
+    runs-on: ubuntu-latest
+
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.1.34
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Audit production dependencies only
+        run: |
+          echo "Installing production dependencies only for security audit..."
+          # Create temporary directory for production-only audit
+          mkdir -p /tmp/prod-audit
+          cp package.json bun.lock /tmp/prod-audit/
+          cd /tmp/prod-audit
+          bun install --production --frozen-lockfile
+          
+          echo "Running Bun security audit on production dependencies..."
+          if bun audit; then
+            echo "✅ No vulnerabilities found in production dependencies"
+          else
+            echo "❌ Vulnerabilities found in production dependencies - failing build"
+            exit 1
+          fi
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          severity: "CRITICAL,HIGH,MEDIUM"
+          format: "sarif"
+          output: "trivy-results.sarif"
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: "trivy-results.sarif"
+
+      - name: Scan for secrets with TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+          extra_args: --debug --only-verified
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: typescript
+          queries: security-extended,security-and-quality
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:typescript"
+
+      - name: MegaLinter Security & Code Quality
+        uses: oxsecurity/megalinter@v8
+        env:
+          DEFAULT_BRANCH: main
+          VALIDATE_ALL_CODEBASE: true
+          TYPESCRIPT_ES_CONFIG_FILE: eslint.config.js
+          ENABLE_LINTERS: TYPESCRIPT_ES,TYPESCRIPT_PRETTIER,JSON_JSONLINT,YAML_YAMLLINT,MARKDOWN_MARKDOWNLINT
+          DISABLE_ERRORS: false
+          FILEIO_REPORTER: false
+          GITHUB_STATUS_REPORTER: false
+        continue-on-error: true
+
+      - name: Security Scan Summary
+        run: |
+          echo "🔒 Enhanced Security Scan Results:"
+          echo "  ✅ Bun production dependency audit completed"
+          echo "  ✅ Trivy vulnerability scanning completed"
+          echo "  ✅ TruffleHog secret scanning completed"
+          echo "  ✅ CodeQL static analysis completed"
+          echo "  ✅ MegaLinter code quality & security checks completed"
+          echo ""
+          echo "🔍 Results are automatically uploaded to GitHub Security tab for review"
+

@@ -1,5 +1,9 @@
 # MCP Todo Server (TypeScript)
 
+[![CI/CD Pipeline](https://github.com/terrymunro/mcp-todo-ts/actions/workflows/ci.yml/badge.svg)](https://github.com/terrymunro/mcp-todo-ts/actions/workflows/ci.yml)
+[![Cross-Platform Testing](https://github.com/terrymunro/mcp-todo-ts/actions/workflows/cross-platform-test.yml/badge.svg)](https://github.com/terrymunro/mcp-todo-ts/actions/workflows/cross-platform-test.yml)
+[![Security Scanning](https://github.com/terrymunro/mcp-todo-ts/actions/workflows/security.yml/badge.svg)](https://github.com/terrymunro/mcp-todo-ts/actions/workflows/security.yml)
+
 This repository contains a fully-featured Todo service that speaks the **Model Context Protocol (MCP)**. It is written in TypeScript and runs on the [Bun](https://bun.sh) runtime with SQLite persistence.
 
 The server exposes ten MCP tools that can be invoked by an AI-agent, CLI, or any other MCP-compatible client:
@@ -226,6 +230,37 @@ Built using:
 - **Drizzle ORM** - Type-safe database toolkit
 - **Zod** - Runtime type validation
 - **Model Context Protocol (MCP)** - Communication protocol for AI tools
+
+## CI/CD Pipeline
+
+This repository includes comprehensive automated testing and release management:
+
+### Continuous Integration
+- **Automated testing** on push to main and pull requests
+- **Multi-platform testing** (Ubuntu, macOS, Windows) 
+- **Type checking** with strict TypeScript configuration
+- **Code quality** enforcement with ESLint
+- **Test coverage** with 106+ comprehensive tests
+- **Security scanning** with dependency auditing and vulnerability checks
+
+### Continuous Deployment
+- **Automatic releases** on successful main branch builds
+- **Binary compilation** using Bun's `--compile` feature
+- **Release assets** with standalone executable
+- **Semantic versioning** based on date and commit hash
+
+### Development Workflow
+```bash
+# Development commands
+bun run typecheck    # Type checking
+bun run lint         # Code linting  
+bun run test         # Run test suite
+bun run build        # Build binary
+
+# Shortcuts
+bun run check        # typecheck + lint
+bun test --watch     # Watch mode testing
+```
 
 ---
 
