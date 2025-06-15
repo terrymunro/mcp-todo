@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
-import "./test-logger"; // Auto-suppress verbose output during tests
-import { handleTodoWrite, handleTodoWriteBatch, handleTodoDelete, handleTodoDeleteBatch, handleTodoListMoveBatch, TodoStatusSchema, TodoPrioritySchema } from "./index";
-import { createTodoList, getTodoById } from "./database";
+import "./utils/test-logger"; // Auto-suppress verbose output during tests
+import { createTodoList, getTodoById } from "../src/database";
+import { handleTodoWrite, handleTodoWriteBatch, handleTodoDelete, handleTodoDeleteBatch, handleTodoListMoveBatch, TodoStatusSchema, TodoPrioritySchema } from "../src/index";
 
 describe("MCP Tool Handler Validation", () => {
   describe("Schema validation", () => {
@@ -251,7 +251,7 @@ describe("handleTodoWriteBatch function", () => {
     const todos = [
       { id: baseId + 1, content: "Batch todo 1", priority: "high" as const },
       { id: baseId + 2, content: "Batch todo 2", priority: "medium" as const },
-      { id: baseId + 3, content: "Batch todo 3", priority: "low" as const }
+      { id: baseId + 3, content: "Batch todo 3", priority: "low" as const },
     ];
 
     const result = await handleTodoWriteBatch({ todos });
@@ -267,13 +267,13 @@ describe("handleTodoWriteBatch function", () => {
     await handleTodoWrite({
       id: baseId,
       content: "Todo to update",
-      priority: "medium"
+      priority: "medium",
     });
 
     // Now do batch operation with mix of create and update
     const todos = [
       { id: baseId, status: "completed" as const }, // Update existing
-      { id: baseId + 1, content: "New batch todo", priority: "high" as const } // Create new
+      { id: baseId + 1, content: "New batch todo", priority: "high" as const }, // Create new
     ];
 
     const result = await handleTodoWriteBatch({ todos });
@@ -286,7 +286,7 @@ describe("handleTodoWriteBatch function", () => {
     const todos = [
       { id: 9999991, content: "Valid todo" }, // Valid
       { id: 9999992 }, // Invalid - no content for new todo
-      { id: 9999993, content: "Another valid todo" } // Valid
+      { id: 9999993, content: "Another valid todo" }, // Valid
     ];
 
     const result = await handleTodoWriteBatch({ todos });
@@ -303,7 +303,7 @@ describe("handleTodoWriteBatch function", () => {
 
   test("should validate todo IDs in batch", async () => {
     const todos = [
-      { id: "invalid" as any, content: "Todo with invalid ID" }
+      { id: "invalid" as any, content: "Todo with invalid ID" },
     ];
 
     const result = await handleTodoWriteBatch({ todos });
@@ -320,22 +320,22 @@ describe("handleTodoDeleteBatch function", () => {
     await handleTodoWrite({
       id: baseId + 1,
       content: "Todo to delete 1",
-      priority: "medium"
+      priority: "medium",
     });
     await handleTodoWrite({
       id: baseId + 2,
       content: "Todo to delete 2",
-      priority: "high"
+      priority: "high",
     });
     await handleTodoWrite({
       id: baseId + 3,
       content: "Todo to delete 3",
-      priority: "low"
+      priority: "low",
     });
 
     // Now delete them in batch
     const result = await handleTodoDeleteBatch({ 
-      todo_ids: [baseId + 1, baseId + 2, baseId + 3] 
+      todo_ids: [baseId + 1, baseId + 2, baseId + 3], 
     });
 
     expect(result.content[0]!.text).toContain("Batch delete completed");
@@ -349,12 +349,12 @@ describe("handleTodoDeleteBatch function", () => {
     await handleTodoWrite({
       id: baseId,
       content: "Todo to delete",
-      priority: "medium"
+      priority: "medium",
     });
 
     // Try to delete one existing and one non-existent todo
     const result = await handleTodoDeleteBatch({ 
-      todo_ids: [baseId, 9999999] // One valid, one invalid
+      todo_ids: [baseId, 9999999], // One valid, one invalid
     });
 
     expect(result.content[0]!.text).toContain("Batch delete completed");
@@ -369,7 +369,7 @@ describe("handleTodoDeleteBatch function", () => {
 
   test("should validate todo IDs are numbers", async () => {
     const result = await handleTodoDeleteBatch({ 
-      todo_ids: ["invalid" as any, 123] 
+      todo_ids: ["invalid" as any, 123], 
     });
 
     expect(result.content[0]!.text).toContain("Todo ID at index 0 must be a valid number");
@@ -380,7 +380,7 @@ describe("handleTodoDeleteBatch function", () => {
     const baseId = Date.now() + 9000000;
     
     const result = await handleTodoDeleteBatch({ 
-      todo_ids: [baseId, baseId + 1, baseId + 2] 
+      todo_ids: [baseId, baseId + 1, baseId + 2], 
     });
 
     expect(result.content[0]!.text).toContain("Batch delete completed");
@@ -400,23 +400,23 @@ describe("handleTodoListMoveBatch function", () => {
     await handleTodoWrite({
       id: baseId + 1,
       content: "Todo to move 1",
-      priority: "medium"
+      priority: "medium",
     });
     await handleTodoWrite({
       id: baseId + 2,
       content: "Todo to move 2",
-      priority: "high"
+      priority: "high",
     });
     await handleTodoWrite({
       id: baseId + 3,
       content: "Todo to move 3",
-      priority: "low"
+      priority: "low",
     });
 
     // Now move them to the target list
     const result = await handleTodoListMoveBatch({ 
       todo_ids: [baseId + 1, baseId + 2, baseId + 3],
-      target_todo_list_id: targetList.id
+      target_todo_list_id: targetList.id,
     });
 
     expect(result.content[0]!.text).toContain("Batch move completed");
@@ -442,13 +442,13 @@ describe("handleTodoListMoveBatch function", () => {
     await handleTodoWrite({
       id: baseId,
       content: "Todo to move",
-      priority: "medium"
+      priority: "medium",
     });
 
     // Try to move one existing and one non-existent todo
     const result = await handleTodoListMoveBatch({ 
       todo_ids: [baseId, 9999999], // One valid, one invalid
-      target_todo_list_id: targetList.id
+      target_todo_list_id: targetList.id,
     });
 
     expect(result.content[0]!.text).toContain("Batch move completed");
@@ -462,7 +462,7 @@ describe("handleTodoListMoveBatch function", () => {
   test("should return error for empty todo_ids array", async () => {
     const result = await handleTodoListMoveBatch({ 
       todo_ids: [], 
-      target_todo_list_id: 1 
+      target_todo_list_id: 1, 
     });
 
     expect(result.content[0]!.text).toBe("At least one todo ID must be provided.");
@@ -471,7 +471,7 @@ describe("handleTodoListMoveBatch function", () => {
   test("should validate todo IDs are numbers", async () => {
     const result = await handleTodoListMoveBatch({ 
       todo_ids: ["invalid" as any, 123],
-      target_todo_list_id: 1
+      target_todo_list_id: 1,
     });
 
     expect(result.content[0]!.text).toContain("Todo ID at index 0 must be a valid number");
@@ -480,7 +480,7 @@ describe("handleTodoListMoveBatch function", () => {
   test("should validate target todo list ID is a number", async () => {
     const result = await handleTodoListMoveBatch({ 
       todo_ids: [123],
-      target_todo_list_id: "invalid" as any
+      target_todo_list_id: "invalid" as any,
     });
 
     expect(result.content[0]!.text).toBe("Target todo list ID must be a valid number.");
@@ -493,13 +493,13 @@ describe("handleTodoListMoveBatch function", () => {
     await handleTodoWrite({
       id: baseId,
       content: "Todo to move to nowhere",
-      priority: "medium"
+      priority: "medium",
     });
 
     // Try to move to non-existent list
     const result = await handleTodoListMoveBatch({ 
       todo_ids: [baseId],
-      target_todo_list_id: 9999999 // Non-existent list
+      target_todo_list_id: 9999999, // Non-existent list
     });
 
     expect(result.content[0]!.text).toContain("Failed to move todos batch");
@@ -515,7 +515,7 @@ describe("handleTodoListMoveBatch function", () => {
     
     const result = await handleTodoListMoveBatch({ 
       todo_ids: [baseId, baseId + 1, baseId + 2],
-      target_todo_list_id: targetList.id
+      target_todo_list_id: targetList.id,
     });
 
     expect(result.content[0]!.text).toContain("Batch move completed");

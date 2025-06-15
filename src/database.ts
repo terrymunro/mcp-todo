@@ -1,18 +1,14 @@
-import { drizzle } from "drizzle-orm/bun-sqlite";
-import { Database } from "bun:sqlite";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { eq, desc } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/bun-sqlite";
+import { Database } from "bun:sqlite";
+import { eq } from "drizzle-orm";
 import {
   project,
   todoList,
   todo,
-  settings,
-  createTriggers,
   type Project,
-  type NewProject,
   type TodoList,
-  type NewTodoList,
   type Todo,
   type NewTodo,
 } from "./schema";
@@ -69,18 +65,18 @@ export async function findProjectRoot(startPath?: string): Promise<string> {
   
   // Common project root indicators (in order of preference)
   const projectIndicators = [
-    '.git',           // Git repository
-    'package.json',   // Node.js/npm project
-    'Cargo.toml',     // Rust project
-    'pyproject.toml', // Python project (modern)
-    'setup.py',       // Python project (legacy)
-    'go.mod',         // Go project
-    'Makefile',       // Various projects with Makefile
-    '.project',       // Eclipse/IDE project
-    'composer.json',  // PHP project
-    'pom.xml',        // Maven/Java project
-    'build.gradle',   // Gradle project
-    'CMakeLists.txt', // CMake project
+    ".git",           // Git repository
+    "package.json",   // Node.js/npm project
+    "Cargo.toml",     // Rust project
+    "pyproject.toml", // Python project (modern)
+    "setup.py",       // Python project (legacy)
+    "go.mod",         // Go project
+    "Makefile",       // Various projects with Makefile
+    ".project",       // Eclipse/IDE project
+    "composer.json",  // PHP project
+    "pom.xml",        // Maven/Java project
+    "build.gradle",   // Gradle project
+    "CMakeLists.txt", // CMake project
   ];
   
   while (true) {
@@ -129,7 +125,7 @@ export async function initializeDatabase() {
   try {
     await applyMigrationsIfNeeded(db, sqlite);
   } catch (error) {
-    console.error('Error applying migrations:', error);
+    console.error("Error applying migrations:", error);
     // For now, continue with manual schema creation as fallback
     await createSchemaManually(sqlite);
   }
@@ -140,75 +136,29 @@ export async function initializeDatabase() {
 /**
  * Apply database migrations if needed
  */
-async function applyMigrationsIfNeeded(db: ReturnType<typeof drizzle>, sqlite: Database) {
-  const { migrate } = await import('drizzle-orm/bun-sqlite/migrator');
+async function applyMigrationsIfNeeded(db: ReturnType<typeof drizzle>, _sqlite: Database) {
+  const { migrate } = await import("drizzle-orm/bun-sqlite/migrator");
   
   // Check if migrations folder exists
   try {
-    await import('fs/promises').then(fs => fs.access('./drizzle'));
+    await import("fs/promises").then(fs => fs.access("./drizzle"));
     
-    // Apply migrations
-    await migrate(db, { migrationsFolder: './drizzle' });
-    console.log('Migrations applied successfully');
-    
-    // Apply additional SQL that Drizzle doesn't handle
-    await applyAdditionalSQL(sqlite);
+    // Apply migrations using standard drizzle-kit
+    await migrate(db, { migrationsFolder: "./drizzle" });
+    console.log("Migrations applied successfully");
     
   } catch (error) {
-    console.log('Migrations folder not found or migration failed, falling back to manual schema creation');
+    console.log("Migrations folder not found or migration failed, falling back to manual schema creation");
     throw error;
   }
 }
 
-/**
- * Apply additional SQL statements that aren't handled by Drizzle migrations
- */
-async function applyAdditionalSQL(sqlite: Database) {
-  // Create triggers for auto-updating timestamps
-  for (const trigger of createTriggers) {
-    sqlite.exec(trigger);
-  }
-
-  // Create triggers for updating todo list statistics
-  sqlite.exec(`
-    CREATE TRIGGER IF NOT EXISTS update_todo_list_stats_on_insert
-    AFTER INSERT ON todo
-    BEGIN
-      UPDATE todo_list SET 
-        num_completed = (SELECT COUNT(*) FROM todo WHERE todo_list_id = NEW.todo_list_id AND status = 'completed'),
-        total_count = (SELECT COUNT(*) FROM todo WHERE todo_list_id = NEW.todo_list_id)
-      WHERE id = NEW.todo_list_id;
-    END;
-  `);
-
-  sqlite.exec(`
-    CREATE TRIGGER IF NOT EXISTS update_todo_list_stats_on_update
-    AFTER UPDATE ON todo
-    BEGIN
-      UPDATE todo_list SET 
-        num_completed = (SELECT COUNT(*) FROM todo WHERE todo_list_id = NEW.todo_list_id AND status = 'completed'),
-        total_count = (SELECT COUNT(*) FROM todo WHERE todo_list_id = NEW.todo_list_id)
-      WHERE id = NEW.todo_list_id;
-    END;
-  `);
-
-  sqlite.exec(`
-    CREATE TRIGGER IF NOT EXISTS update_todo_list_stats_on_delete
-    AFTER DELETE ON todo
-    BEGIN
-      UPDATE todo_list SET 
-        num_completed = (SELECT COUNT(*) FROM todo WHERE todo_list_id = OLD.todo_list_id AND status = 'completed'),
-        total_count = (SELECT COUNT(*) FROM todo WHERE todo_list_id = OLD.todo_list_id)
-      WHERE id = OLD.todo_list_id;
-    END;
-  `);
-}
 
 /**
  * Fallback manual schema creation (legacy approach)
  */
 async function createSchemaManually(sqlite: Database) {
-  console.log('Creating schema manually as fallback');
+  console.log("Creating schema manually as fallback");
   
   // Create tables if they don't exist
   sqlite.exec(`
@@ -253,8 +203,6 @@ async function createSchemaManually(sqlite: Database) {
 
   // Create indexes
   sqlite.exec(`CREATE INDEX IF NOT EXISTS location_idx ON project(location);`);
-
-  await applyAdditionalSQL(sqlite);
 }
 
 // Global database connection - will be initialized on first use
@@ -368,6 +316,10 @@ export async function initializeProjectContext(): Promise<Project> {
       })
       .returning();
 
+    if (!list) {
+      throw new Error("Failed to create default todo list");
+    }
+
     // Update project row with the newly created default list.
     await db
       .update(project)
@@ -382,7 +334,9 @@ export async function initializeProjectContext(): Promise<Project> {
 }
 
 export async function getCurrentProject(): Promise<Project | null> {
-  if (cachedProject) return cachedProject;
+  if (cachedProject) {
+return cachedProject;
+}
 
   const db = await getDb();
   const projectRoot = await findProjectRoot();
@@ -449,6 +403,10 @@ export async function createTodoList(
     })
     .returning();
 
+  if (!inserted) {
+    throw new Error("Failed to create todo list");
+  }
+
   return inserted;
 }
 
@@ -508,11 +466,7 @@ export async function deleteTodoList(id: number): Promise<void> {
     throw new Error("Cannot delete the default todo list for a project");
   }
 
-  const result = await db.delete(todoList).where(eq(todoList.id, id));
-
-  if (result.changes === 0) {
-    throw new Error(`Todo list with ID ${id} not found`);
-  }
+  await db.delete(todoList).where(eq(todoList.id, id));
 }
 
 // ---------------------------------------------------------------------------
@@ -547,7 +501,9 @@ export async function getTodosByListId(
   return todos.sort((a, b) => {
     const pa = priorityWeight[a.priority] ?? 3;
     const pb = priorityWeight[b.priority] ?? 3;
-    if (pa !== pb) return pa - pb;
+    if (pa !== pb) {
+return pa - pb;
+}
     return a.id - b.id;
   });
 }
@@ -601,6 +557,10 @@ export async function saveTodo({
       })
       .returning();
 
+    if (!inserted) {
+      throw new Error("Failed to create todo");
+    }
+
     return inserted;
   }
 
@@ -618,10 +578,18 @@ export async function saveTodo({
 
   // Build update object dynamically to only touch provided fields
   const updateFields: Partial<NewTodo> = {};
-  if (content !== undefined) updateFields.content = content;
-  if (priority !== undefined) updateFields.priority = priority;
-  if (status !== undefined) updateFields.status = status;
-  if (todo_list_id !== undefined) updateFields.todo_list_id = todo_list_id;
+  if (content !== undefined) {
+updateFields.content = content;
+}
+  if (priority !== undefined) {
+updateFields.priority = priority;
+}
+  if (status !== undefined) {
+updateFields.status = status;
+}
+  if (todo_list_id !== undefined) {
+updateFields.todo_list_id = todo_list_id;
+}
 
   // No-op if nothing to update – simply return existing row
   if (Object.keys(updateFields).length === 0) {
@@ -646,11 +614,7 @@ export async function deleteTodo(id: number): Promise<void> {
     throw new Error(`Todo with ID ${id} not found`);
   }
 
-  const result = await db.delete(todo).where(eq(todo.id, id));
-
-  if (result.changes === 0) {
-    throw new Error(`Failed to delete todo with ID ${id}`);
-  }
+  await db.delete(todo).where(eq(todo.id, id));
 }
 
 /**
@@ -664,7 +628,7 @@ export async function saveTodoBatch(
     priority?: "high" | "medium" | "low";
     status?: "completed" | "pending" | "in_progress";
     todo_list_id?: number;
-  }>
+  }>,
 ): Promise<Array<{ id: number; success: boolean; todo?: Todo; error?: string }>> {
   // Ensure db connection is available
   if (!dbConnection) {
@@ -683,13 +647,13 @@ export async function saveTodoBatch(
         results.push({
           id: todoData.id,
           success: true,
-          todo: savedTodo
+          todo: savedTodo,
         });
       } catch (error) {
         results.push({
           id: todoData.id,
           success: false,
-          error: error instanceof Error ? error.message : "Unknown error"
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
     }
@@ -708,7 +672,7 @@ export async function saveTodoBatch(
  * Returns an array of results indicating success/failure for each todo
  */
 export async function deleteTodoBatch(
-  todoIds: number[]
+  todoIds: number[],
 ): Promise<Array<{ id: number; success: boolean; error?: string }>> {
   // Ensure db connection is available
   if (!dbConnection) {
@@ -726,13 +690,13 @@ export async function deleteTodoBatch(
         await deleteTodo(id);
         results.push({
           id,
-          success: true
+          success: true,
         });
       } catch (error) {
         results.push({
           id,
           success: false,
-          error: error instanceof Error ? error.message : "Unknown error"
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
     }
@@ -752,7 +716,7 @@ export async function deleteTodoBatch(
  */
 export async function moveTodosBatch(
   todoIds: number[],
-  targetTodoListId: number
+  targetTodoListId: number,
 ): Promise<Array<{ id: number; success: boolean; error?: string }>> {
   // Ensure db connection is available
   if (!dbConnection) {
@@ -779,7 +743,7 @@ export async function moveTodosBatch(
           results.push({
             id,
             success: false,
-            error: `Todo with ID ${id} not found`
+            error: `Todo with ID ${id} not found`,
           });
           continue;
         }
@@ -787,18 +751,18 @@ export async function moveTodosBatch(
         // Move the todo by updating its todo_list_id
         await saveTodo({
           id,
-          todo_list_id: targetTodoListId
+          todo_list_id: targetTodoListId,
         });
         
         results.push({
           id,
-          success: true
+          success: true,
         });
       } catch (error) {
         results.push({
           id,
           success: false,
-          error: error instanceof Error ? error.message : "Unknown error"
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
     }

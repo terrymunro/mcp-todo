@@ -1,7 +1,6 @@
-import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import "./test-logger"; // Auto-suppress verbose output during tests
 import * as fs from "fs/promises";
-import * as path from "path";
+import { describe, test, expect, beforeEach, afterEach } from "bun:test";
+import "./utils/test-logger"; // Auto-suppress verbose output during tests
 
 import {
   initializeProjectContext,
@@ -14,7 +13,7 @@ import {
   deleteTodo,
   createTodoList,
   clearAllCaches,
-} from "./database";
+} from "../src/database";
 
 /**
  * This test-suite focuses on the higher-level helpers found in database.ts.

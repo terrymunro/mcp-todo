@@ -1,8 +1,8 @@
-import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import "./test-logger"; // Auto-suppress verbose output during tests
-import { createTodoServer } from "./index";
-import { clearAllCaches } from "./database";
 import * as fs from "fs/promises";
+import { describe, test, expect, beforeEach, afterEach } from "bun:test";
+import "./utils/test-logger"; // Auto-suppress verbose output during tests
+import { clearAllCaches } from "../src/database";
+import { createTodoServer } from "../src/index";
 
 /**
  * This test suite focuses on testing the MCP server as a complete system,
@@ -48,7 +48,7 @@ describe("MCP Server Integration Tests", () => {
     // Clean up test directory
     try {
       await fs.rm(testDataDir, { recursive: true, force: true });
-    } catch (error) {
+    } catch {
       // Ignore cleanup errors
     }
   });
@@ -78,16 +78,14 @@ describe("MCP Server Integration Tests", () => {
   });
 
   describe("Tool Execution Tests", () => {
-    let server: ReturnType<typeof createTodoServer>;
-
     beforeEach(() => {
-      server = createTodoServer();
+      createTodoServer();
     });
 
     test("should execute todo-write tool successfully", async () => {
       // Note: The MCP SDK doesn't expose a direct way to call tools in tests,
       // but we can test the underlying handlers that the tools use
-      const { handleTodoWrite } = await import("./index");
+      const { handleTodoWrite } = await import("../src/index");
       
       const result = await handleTodoWrite({
         id: 1,
@@ -103,7 +101,7 @@ describe("MCP Server Integration Tests", () => {
 
     test("should execute todo-read tool successfully", async () => {
       // First create a todo
-      const { handleTodoWrite } = await import("./index");
+      const { handleTodoWrite } = await import("../src/index");
       await handleTodoWrite({
         id: 1,
         content: "Todo to read",
@@ -111,7 +109,7 @@ describe("MCP Server Integration Tests", () => {
       });
 
       // Then read it
-      const { getTodoById } = await import("./database");
+      const { getTodoById } = await import("../src/database");
       const todo = await getTodoById(1);
 
       expect(todo).toBeDefined();
@@ -121,7 +119,7 @@ describe("MCP Server Integration Tests", () => {
 
     test("should execute todo-delete tool successfully", async () => {
       // First create a todo
-      const { handleTodoWrite, handleTodoDelete } = await import("./index");
+      const { handleTodoWrite, handleTodoDelete } = await import("../src/index");
       await handleTodoWrite({
         id: 1,
         content: "Todo to delete",
@@ -135,24 +133,24 @@ describe("MCP Server Integration Tests", () => {
       expect(result.content[0]!.text).toContain("Todo 1 deleted successfully");
 
       // Verify it's actually deleted
-      const { getTodoById } = await import("./database");
+      const { getTodoById } = await import("../src/database");
       const deletedTodo = await getTodoById(1);
       expect(deletedTodo).toBeNull();
     });
 
     test("should execute todo-list tool successfully", async () => {
       // Initialize project context first
-      const { initializeProjectContext } = await import("./database");
+      const { initializeProjectContext } = await import("../src/database");
       await initializeProjectContext();
 
       // Create multiple todos
-      const { handleTodoWrite } = await import("./index");
+      const { handleTodoWrite } = await import("../src/index");
       await handleTodoWrite({ id: 1, content: "High priority todo", priority: "high" });
       await handleTodoWrite({ id: 2, content: "Medium priority todo", priority: "medium" });
       await handleTodoWrite({ id: 3, content: "Low priority todo", priority: "low" });
 
       // List them
-      const { getTodosByListId } = await import("./database");
+      const { getTodosByListId } = await import("../src/database");
       const todos = await getTodosByListId();
 
       expect(todos.length).toBe(3);
@@ -162,7 +160,7 @@ describe("MCP Server Integration Tests", () => {
     });
 
     test("should handle project-get tool", async () => {
-      const { getCurrentProject, initializeProjectContext } = await import("./database");
+      const { getCurrentProject, initializeProjectContext } = await import("../src/database");
       
       // Store the expected directory
       const expectedCwd = process.cwd();
@@ -176,7 +174,7 @@ describe("MCP Server Integration Tests", () => {
     });
 
     test("should handle todo-list creation and management", async () => {
-      const { createTodoList, getAllTodoListsForCurrentProject, initializeProjectContext } = await import("./database");
+      const { createTodoList, getAllTodoListsForCurrentProject, initializeProjectContext } = await import("../src/database");
       
       // Initialize project context
       await initializeProjectContext();
@@ -195,7 +193,7 @@ describe("MCP Server Integration Tests", () => {
 
   describe("Error Handling in Tool Execution", () => {
     test("should handle errors gracefully in todo-write", async () => {
-      const { handleTodoWrite } = await import("./index");
+      const { handleTodoWrite } = await import("../src/index");
       
       // Try to create a todo without content
       const result = await handleTodoWrite({ id: 1 });
@@ -204,7 +202,7 @@ describe("MCP Server Integration Tests", () => {
     });
 
     test("should handle errors gracefully in todo-delete", async () => {
-      const { handleTodoDelete } = await import("./index");
+      const { handleTodoDelete } = await import("../src/index");
       
       // Try to delete a non-existent todo
       const result = await handleTodoDelete({ id: 999 });
@@ -214,7 +212,7 @@ describe("MCP Server Integration Tests", () => {
     });
 
     test("should handle database errors gracefully", async () => {
-      const { handleTodoWrite } = await import("./index");
+      const { handleTodoWrite } = await import("../src/index");
       
       // Try to create a todo with an invalid todo_list_id
       const result = await handleTodoWrite({
@@ -229,8 +227,8 @@ describe("MCP Server Integration Tests", () => {
 
   describe("Data Consistency Tests", () => {
     test("should maintain data consistency across operations", async () => {
-      const { handleTodoWrite, handleTodoDelete } = await import("./index");
-      const { getTodosByListId, getTodoListById, getCurrentDefaultTodoListId, initializeProjectContext } = await import("./database");
+      const { handleTodoWrite, handleTodoDelete } = await import("../src/index");
+      const { getTodosByListId, getTodoListById, getCurrentDefaultTodoListId, initializeProjectContext } = await import("../src/database");
       
       // Initialize project context
       await initializeProjectContext();
@@ -263,8 +261,8 @@ describe("MCP Server Integration Tests", () => {
     });
 
     test("should handle multiple rapid operations correctly", async () => {
-      const { handleTodoWrite, handleTodoDelete } = await import("./index");
-      const { getTodosByListId, initializeProjectContext } = await import("./database");
+      const { handleTodoWrite, handleTodoDelete } = await import("../src/index");
+      const { getTodosByListId, initializeProjectContext } = await import("../src/database");
       
       // Initialize project context
       await initializeProjectContext();

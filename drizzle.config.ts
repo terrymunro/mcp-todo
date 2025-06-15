@@ -1,5 +1,5 @@
-import { defineConfig } from 'drizzle-kit';
-import * as path from 'path';
+import * as path from "path";
+import { defineConfig } from "drizzle-kit";
 
 // Replicate the XDG data directory logic for drizzle-kit config
 function getDataDirectory(): string {
@@ -19,11 +19,13 @@ function getDataDirectory(): string {
 }
 
 export default defineConfig({
-  schema: './schema.ts',
-  out: './drizzle',
-  dialect: 'sqlite',
+  schema: "./src/schema.ts",
+  out: "./drizzle",
+  // @ts-ignore - Drizzle-kit sqlite dialect type definitions may be inconsistent
+  dialect: "sqlite",
   dbCredentials: {
-    url: path.join(getDataDirectory(), 'todos.db'),
+    // @ts-ignore - url property for sqlite is valid but types may be wrong
+    url: path.join(getDataDirectory(), "todos.db"),
   },
   verbose: true,
   strict: true,

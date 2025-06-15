@@ -2,7 +2,7 @@
 export function isTestEnvironment(): boolean {
   return (
     typeof globalThis.Bun !== "undefined" &&
-    typeof globalThis.Bun.jest !== "undefined"
+    typeof (globalThis.Bun as { jest?: unknown }).jest !== "undefined"
   ) ||
   process.env.NODE_ENV === "test" ||
   process.argv.some(arg => arg.includes("test"));
@@ -37,7 +37,7 @@ class TestLogger {
       /^Migrations folder not found or migration failed/,
     ];
 
-    console.log = (...args: any[]) => {
+    console.log = (...args: unknown[]) => {
       const message = this.formatArgs(args);
       const shouldSuppress = suppressedPatterns.some(pattern => pattern.test(message));
       
@@ -46,7 +46,7 @@ class TestLogger {
       }
     };
 
-    console.error = (...args: any[]) => {
+    console.error = (...args: unknown[]) => {
       const message = this.formatArgs(args);
       
       // Suppress expected test errors and migration errors
@@ -65,7 +65,7 @@ class TestLogger {
       this.originalConsole.error(...args);
     };
 
-    console.warn = (...args: any[]) => {
+    console.warn = (...args: unknown[]) => {
       this.originalConsole.warn(...args);
     };
   }
@@ -76,7 +76,7 @@ class TestLogger {
     console.warn = this.originalConsole.warn;
   }
 
-  private formatArgs(args: any[]): string {
+  private formatArgs(args: unknown[]): string {
     return args
       .map((arg) =>
         typeof arg === "object" && arg !== null

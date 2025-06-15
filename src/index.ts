@@ -90,7 +90,7 @@ export async function handleTodoWrite({
       return createErrorResponse("At least one field (content, priority, status, or todo_list_id) must be provided for updates.");
     }
 
-    const savedTodo = await saveTodo({
+    await saveTodo({
       id,
       content,
       priority,
@@ -126,8 +126,8 @@ export async function handleTodoWriteBatch({
 
     // Validate each todo has a valid ID
     for (let i = 0; i < todos.length; i++) {
-      const todo = todos[i];
-      if (typeof todo.id !== 'number') {
+      const todoItem = todos[i];
+      if (!todoItem || typeof todoItem.id !== "number") {
         return createErrorResponse(`Todo at index ${i} must have a valid ID.`);
       }
     }
@@ -142,7 +142,7 @@ export async function handleTodoWriteBatch({
       total: results.length,
       successful,
       failed,
-      results
+      results,
     };
 
     return createSuccessResponse(`Batch write completed: ${successful} successful, ${failed} failed. Details: ${JSON.stringify(summary, null, 2)}`);
@@ -181,7 +181,7 @@ export async function handleTodoDeleteBatch({
     // Validate each todo ID is a number
     for (let i = 0; i < todo_ids.length; i++) {
       const id = todo_ids[i];
-      if (typeof id !== 'number') {
+      if (typeof id !== "number") {
         return createErrorResponse(`Todo ID at index ${i} must be a valid number.`);
       }
     }
@@ -196,7 +196,7 @@ export async function handleTodoDeleteBatch({
       total: results.length,
       successful,
       failed,
-      results
+      results,
     };
 
     return createSuccessResponse(`Batch delete completed: ${successful} successful, ${failed} failed. Details: ${JSON.stringify(summary, null, 2)}`);
@@ -221,14 +221,14 @@ export async function handleTodoListMoveBatch({
       return createErrorResponse("At least one todo ID must be provided.");
     }
 
-    if (typeof target_todo_list_id !== 'number') {
+    if (typeof target_todo_list_id !== "number") {
       return createErrorResponse("Target todo list ID must be a valid number.");
     }
 
     // Validate each todo ID is a number
     for (let i = 0; i < todo_ids.length; i++) {
       const id = todo_ids[i];
-      if (typeof id !== 'number') {
+      if (typeof id !== "number") {
         return createErrorResponse(`Todo ID at index ${i} must be a valid number.`);
       }
     }
@@ -244,7 +244,7 @@ export async function handleTodoListMoveBatch({
       successful,
       failed,
       target_todo_list_id,
-      results
+      results,
     };
 
     return createSuccessResponse(`Batch move completed: ${successful} successful, ${failed} failed. Details: ${JSON.stringify(summary, null, 2)}`);
@@ -329,8 +329,8 @@ Show priority using visual cues:
 3. Use \`todo-list\` to generate progress reports sorted by priority`,
     capabilities: {
       tools: { listChanged: true },
-      logging: {}
-    }
+      logging: {},
+    },
   });
 
   // Tool to write or update a todo item
@@ -467,7 +467,7 @@ Show priority using visual cues:
   // Tool to delete multiple todo items in batch
   server.tool(
     "todo-delete-batch",
-    'Delete multiple todo items by their IDs in a single batch operation with transaction support. This permanently removes the todos from the database.\n\nExamples:\n• Delete multiple: {todo_ids: [1, 2, 3]}\n• Delete single in batch: {todo_ids: [5]}\n  Returns batch operation results with success/failure count',
+    "Delete multiple todo items by their IDs in a single batch operation with transaction support. This permanently removes the todos from the database.\n\nExamples:\n• Delete multiple: {todo_ids: [1, 2, 3]}\n• Delete single in batch: {todo_ids: [5]}\n  Returns batch operation results with success/failure count",
     {
       todo_ids: z.array(z.number()).min(1).describe("Array of todo item IDs to delete. At least one ID is required."),
     },
@@ -479,7 +479,7 @@ Show priority using visual cues:
   // Tool to move multiple todo items between lists in batch
   server.tool(
     "todo-list-move-batch",
-    'Move multiple todo items to a different todo list in a single batch operation with transaction support. This updates the todo_list_id for all specified todos.\n\nExamples:\n• Move multiple: {todo_ids: [1, 2, 3], target_todo_list_id: 5}\n• Move single in batch: {todo_ids: [7], target_todo_list_id: 2}\n  Returns batch operation results with success/failure count',
+    "Move multiple todo items to a different todo list in a single batch operation with transaction support. This updates the todo_list_id for all specified todos.\n\nExamples:\n• Move multiple: {todo_ids: [1, 2, 3], target_todo_list_id: 5}\n• Move single in batch: {todo_ids: [7], target_todo_list_id: 2}\n  Returns batch operation results with success/failure count",
     {
       todo_ids: z.array(z.number()).min(1).describe("Array of todo item IDs to move. At least one ID is required."),
       target_todo_list_id: z.number().describe("The ID of the target todo list to move the todos to."),

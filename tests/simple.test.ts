@@ -3,8 +3,8 @@ import { Database } from "bun:sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { eq } from "drizzle-orm";
 
-import { project, todoList, todo, createTriggers } from "./schema";
-import { TodoStatusSchema, TodoPrioritySchema } from "./index";
+import { project, todoList, todo, createTriggers } from "../src/schema";
+import { TodoStatusSchema, TodoPrioritySchema } from "../src/index";
 
 describe("Schema and Basic Functionality", () => {
   test("should validate todo status enum", () => {
@@ -297,7 +297,9 @@ describe("Database Schema", () => {
       const priorityDiff =
         priorityOrder[a.priority as keyof typeof priorityOrder] -
         priorityOrder[b.priority as keyof typeof priorityOrder];
-      if (priorityDiff !== 0) return priorityDiff;
+      if (priorityDiff !== 0) {
+return priorityDiff;
+}
       return a.id - b.id;
     });
 

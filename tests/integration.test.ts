@@ -1,24 +1,21 @@
+import * as fs from "fs/promises";
+import * as path from "path";
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import "./test-logger"; // Auto-suppress verbose output during tests
-import {
-  createTodoServer,
-  main,
-  TodoStatusSchema,
-  TodoPrioritySchema,
-} from "./index";
+import "./utils/test-logger"; // Auto-suppress verbose output during tests
 import {
   getDataDirectory,
   getDatabasePath,
   initializeProjectContext,
-  getCurrentProject,
   clearProjectCache,
   clearDatabaseConnectionCache,
   clearAllCaches,
   getCurrentDefaultTodoListId,
-  createTodoList,
-} from "./database";
-import * as fs from "fs/promises";
-import * as path from "path";
+} from "../src/database";
+import {
+  createTodoServer,
+  TodoStatusSchema,
+  TodoPrioritySchema,
+} from "../src/index";
 
 describe("Integration Tests", () => {
   let originalCwd: () => string;
@@ -51,7 +48,7 @@ describe("Integration Tests", () => {
     // Clean up test directory
     try {
       await fs.rm(testDataDir, { recursive: true, force: true });
-    } catch (error) {
+    } catch {
       // Ignore cleanup errors
     }
   });
@@ -167,8 +164,12 @@ describe("Integration Tests", () => {
         );
       } finally {
         // Restore environment
-        if (originalHome) process.env.HOME = originalHome;
-        if (originalUserProfile) process.env.USERPROFILE = originalUserProfile;
+        if (originalHome) {
+process.env.HOME = originalHome;
+}
+        if (originalUserProfile) {
+process.env.USERPROFILE = originalUserProfile;
+}
         process.env.XDG_DATA_HOME = testDataDir;
       }
     });
@@ -196,7 +197,7 @@ describe("Integration Tests", () => {
         const stats = await fs.stat(dbPath);
         expect(stats.isFile()).toBe(true);
         expect(stats.size).toBeGreaterThan(0);
-      } catch (error) {
+      } catch {
         // If file doesn't exist, that's also a valid test result for this integration test
         // The important thing is that initializeProjectContext() didn't throw
         expect(true).toBe(true);
@@ -212,7 +213,7 @@ describe("Integration Tests", () => {
       try {
         const stats = await fs.stat(dataDir);
         expect(stats.isDirectory()).toBe(true);
-      } catch (error) {
+      } catch {
         // Directory might not exist due to test isolation, but initialization succeeded
         expect(true).toBe(true);
       }
