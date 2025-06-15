@@ -263,6 +263,74 @@ export function createTodoServer(): McpServer {
   const server = new McpServer({
     name: "todo-server",
     version: "1.0.0",
+  }, {
+    instructions: `# Todo List Management Server
+
+A todo list management server: use the tools in this server to maintain task/todo lists for tracking progress against long and short-term plans.
+
+## Tools
+
+### Core Todo Management
+- **todo-write**: Create new todos or update existing ones (supports PATCH operations). Use when adding tasks to your plan or updating task status/priority.
+- **todo-read**: Retrieve a specific todo by ID. Use when you need details about a particular task.
+- **todo-list**: List all todos sorted by priority (high → medium → low). Use to display current task status and plan overview.
+- **todo-delete**: Remove a single todo. Use when a task is no longer relevant or was added by mistake.
+
+### Batch Operations  
+- **todo-write-batch**: Create or update multiple todos in a single transaction. Use when adding several related tasks or making bulk status updates.
+- **todo-delete-batch**: Delete multiple todos at once. Use when cleaning up completed sprints or removing obsolete tasks.
+- **todo-list-move-batch**: Move multiple todos between different lists. Use when reorganizing tasks across projects or categories.
+
+### Project Management
+- **project-get**: Get current project details (name, location, default todo list). Use to understand the current working context.
+- **project-update**: Update project name or default todo list. Use when renaming projects or changing organizational structure.
+
+### Todo List Organization
+- **todo-list-list**: List all todo lists for the current project. Use to see available categories/lists for task organization.
+- **todo-list-get**: Get details of a specific todo list or the default list. Use to understand list structure and statistics.
+- **todo-list-create**: Create new todo lists for categorizing tasks. Use when starting new project phases or organizing by theme.
+- **todo-list-update**: Update todo list name or description. Use when reorganizing or clarifying list purposes.
+- **todo-list-delete**: Delete a todo list and all its todos. Use when project phases are complete or categories are no longer needed.
+
+## Best Practices
+
+### Display Format
+When displaying todos to users, use these visual indicators:
+- ✅ for completed tasks (\`status: "completed"\`)
+- ⏳ for in-progress tasks (\`status: "in_progress"\`) 
+- 🔲 for pending tasks (\`status: "pending"\`)
+
+### Priority Visualization
+Show priority using visual cues:
+- 🔴 High priority tasks (tackle these first)
+- 🟡 Medium priority tasks (standard workflow)
+- 🟢 Low priority tasks (when time permits)
+
+### Workflow Guidelines
+
+**When starting a new project or plan:**
+1. Use \`project-get\` to understand current context
+2. Use \`todo-list-create\` to organize tasks by theme/phase if needed
+3. Use \`todo-write-batch\` to add multiple planned tasks efficiently
+
+**During active work:**
+1. Use \`todo-list\` to see current priorities and status
+2. Use \`todo-write\` to update task status as work progresses
+3. Use \`todo-write\` to add new tasks discovered during implementation
+
+**For project organization:**
+1. Group related tasks using different todo lists (e.g., "Sprint 1", "Documentation", "Testing")
+2. Use priority levels to indicate urgency within each list
+3. Use batch operations when making systematic changes across multiple tasks
+
+**For progress tracking:**
+1. Regularly update task status to reflect actual progress
+2. Use the visual indicators when presenting status to stakeholders
+3. Use \`todo-list\` to generate progress reports sorted by priority`,
+    capabilities: {
+      tools: { listChanged: true },
+      logging: {}
+    }
   });
 
   // Tool to write or update a todo item
