@@ -2,15 +2,16 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import "./utils/test-logger"; // Auto-suppress verbose output during tests
+import { getDataDirectory, getDatabasePath } from "../src/utils/xdg";
 import {
-  getDataDirectory,
-  getDatabasePath,
   initializeProjectContext,
-  clearProjectCache,
-  clearDatabaseConnectionCache,
-  clearAllCaches,
-  getCurrentDefaultTodoListId,
-} from "../src/database";
+} from "../src/database/project";
+import { clearDatabaseConnectionCache } from "../src/database/connection";
+
+// Helper to clear database connection cache
+function clearAllCaches() {
+  clearDatabaseConnectionCache();
+}
 import {
   createTodoServer,
   TodoStatusSchema,
@@ -273,9 +274,10 @@ process.env.USERPROFILE = originalUserProfile;
       // Verify default todo list was created
       expect(project.default_todo_list_id).toBeDefined();
       
-      // Verify we can access the default todo list ID
-      const defaultListId = getCurrentDefaultTodoListId();
-      expect(defaultListId).toBe(project.default_todo_list_id);
+      // Verify the default todo list ID is valid
+      const defaultListId = project.default_todo_list_id;
+      expect(typeof defaultListId).toBe("number");
+      expect(defaultListId).toBeGreaterThan(0);
     });
 
     test("should reuse existing project for same directory", async () => {
@@ -299,8 +301,7 @@ process.env.USERPROFILE = originalUserProfile;
       process.cwd = () => projectPath1;
       const project1 = await initializeProjectContext();
 
-      // Clear cache and create second project
-      clearProjectCache();
+      // Create second project in different directory
       const projectPath2 = "/tmp/project-b-" + Date.now();
       process.cwd = () => projectPath2;
       const project2 = await initializeProjectContext();
@@ -332,48 +333,4 @@ process.env.USERPROFILE = originalUserProfile;
     });
   });
 
-  describe("Cache Invalidation Tests", () => {
-    test("should provide cache clearing functions without errors", () => {
-      // Test that cache clearing functions exist and don't throw errors
-      expect(() => clearProjectCache()).not.toThrow();
-      expect(() => clearDatabaseConnectionCache()).not.toThrow();
-      expect(() => clearAllCaches()).not.toThrow();
-    });
-
-    test("should handle getCurrentDefaultTodoListId correctly", async () => {
-      const projectPath = "/tmp/default-id-test-" + Date.now();
-      process.cwd = () => projectPath;
-
-      // Initialize project
-      const project = await initializeProjectContext();
-      
-      // Verify getCurrentDefaultTodoListId returns the correct ID
-      const defaultId = getCurrentDefaultTodoListId();
-      expect(defaultId).toBe(project.default_todo_list_id);
-      expect(typeof defaultId).toBe("number");
-
-      // Clear cache and verify it returns null when cache is cleared
-      clearProjectCache();
-      const defaultIdAfterClear = getCurrentDefaultTodoListId();
-      
-      // After clearing project cache, getCurrentDefaultTodoListId should return null
-      // because it relies on the cached project
-      expect(defaultIdAfterClear).toBe(null);
-    });
-
-    test("should handle cache clearing without errors", () => {
-      // Test that all cache clearing functions work without errors
-      expect(() => clearProjectCache()).not.toThrow();
-      expect(() => clearDatabaseConnectionCache()).not.toThrow();
-      expect(() => clearAllCaches()).not.toThrow();
-
-      // These functions should be safe to call multiple times
-      expect(() => {
-        clearProjectCache();
-        clearProjectCache();
-        clearAllCaches();
-        clearDatabaseConnectionCache();
-      }).not.toThrow();
-    });
-  });
 });

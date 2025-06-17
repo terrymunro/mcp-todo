@@ -1,6 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import "./utils/test-logger"; // Auto-suppress verbose output during tests
-import { createTodoList, getTodoById } from "../src/database";
+import { getTodoById } from "../src/database/todo";
+import { createTodoList } from "../src/database/todo-list";
 import { handleTodoWrite, handleTodoWriteBatch, handleTodoDelete, handleTodoDeleteBatch, handleTodoListMoveBatch, TodoStatusSchema, TodoPrioritySchema } from "../src/index";
 
 describe("MCP Tool Handler Validation", () => {

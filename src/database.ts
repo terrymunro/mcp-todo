@@ -227,23 +227,6 @@ async function getDb() {
   return dbConnection.db;
 }
 
-// In-memory cache for the project that belongs to the current working
-// directory.  This is purely an optimisation so that repeated helper calls do
-// not re-query the database each time.
-let cachedProject: Project | null = null;
-
-/** Convenience getter used by tests */
-export function getCurrentDefaultTodoListId(): number | null {
-  return cachedProject?.default_todo_list_id ?? null;
-}
-
-/**
- * Clears the cached project, forcing the next project lookup to re-query the database
- * Useful for testing scenarios where you need to reset the cache
- */
-export function clearProjectCache(): void {
-  cachedProject = null;
-}
 
 /**
  * Clears the cached database connection, forcing the next database operation to create a fresh connection
@@ -261,14 +244,6 @@ export function clearDatabaseConnectionCache(): void {
   dbConnection = null;
 }
 
-/**
- * Clears both the project cache and database connection cache
- * Useful for testing scenarios where you need a complete reset
- */
-export function clearAllCaches(): void {
-  clearProjectCache();
-  clearDatabaseConnectionCache();
-}
 
 // ---------------------------------------------------------------------------
 // Project boot-strapping helpers
@@ -278,17 +253,11 @@ export function clearAllCaches(): void {
  * Ensures that a row exists in the `project` table for the current project root
  * (found by walking up from the current working directory looking for project indicators).
  * If the project did not exist it is created together with a default todo list.
- * The helper caches the resulting row so that subsequent calls are inexpensive.
  */
 export async function initializeProjectContext(): Promise<Project> {
   const db = await getDb();
 
   const projectRoot = await findProjectRoot();
-
-  // Try cache first
-  if (cachedProject && cachedProject.location === projectRoot) {
-    return cachedProject;
-  }
 
   // 1. Lookup existing project by location
   let [proj] = await db.select().from(project).where(eq(project.location, projectRoot));
@@ -329,23 +298,14 @@ export async function initializeProjectContext(): Promise<Project> {
     proj = { ...proj, default_todo_list_id: list.id };
   }
 
-  cachedProject = proj;
   return proj;
 }
 
 export async function getCurrentProject(): Promise<Project | null> {
-  if (cachedProject) {
-return cachedProject;
-}
-
   const db = await getDb();
   const projectRoot = await findProjectRoot();
 
   const [proj] = await db.select().from(project).where(eq(project.location, projectRoot));
-
-  if (proj) {
-    cachedProject = proj;
-  }
 
   return proj ?? null;
 }
@@ -373,11 +333,6 @@ export async function updateProject(
 
   if (!updated) {
     throw new Error(`Project with ID ${id} not found`);
-  }
-
-  // If we updated the current project → sync cache
-  if (cachedProject && cachedProject.id === id) {
-    cachedProject = updated;
   }
 
   return updated;

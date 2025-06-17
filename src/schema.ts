@@ -13,9 +13,9 @@ export const project = sqliteTable(
       .notNull()
       .default(sql`(unixepoch())`),
   },
-  (table) => ({
-    locationIdx: index("location_idx").on(table.location),
-  }),
+  (table) => [
+    index("location_idx").on(table.location),
+  ],
 );
 
 // Todo List table
@@ -24,12 +24,6 @@ export const todoList = sqliteTable("todo_list", {
   project_id: integer("project_id").notNull(),
   name: text("name").notNull(),
   description: text("description"),
-  // Generated columns for stats using SQLite generated columns feature
-  // See: https://sqlite.org/gencol.html
-  // NOTE: drizzle-orm's SQLite column builder currently does not support the
-  // `.as()` helper in Bun's runtime build.  The generated columns are therefore
-  // omitted in favour of simple, nullable integer placeholders.  Production
-  // code can always compute these values on demand.
   num_completed: integer("num_completed"),
   total_count: integer("total_count"),
   updated_at: integer("updated_at", { mode: "timestamp" })

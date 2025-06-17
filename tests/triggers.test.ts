@@ -2,7 +2,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import "./utils/test-logger"; // Auto-suppress verbose output during tests
-import { initializeDatabase } from "../src/database";
+import { initializeDatabase } from "../src/database/connection";
 
 /**
  * Tests to verify that all database triggers are working correctly

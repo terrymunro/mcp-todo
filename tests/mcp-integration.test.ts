@@ -1,7 +1,12 @@
 import * as fs from "fs/promises";
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import "./utils/test-logger"; // Auto-suppress verbose output during tests
-import { clearAllCaches } from "../src/database";
+import { clearDatabaseConnectionCache } from "../src/database/connection";
+
+// Helper to clear database connection cache
+function clearAllCaches() {
+  clearDatabaseConnectionCache();
+}
 import { createTodoServer } from "../src/index";
 
 /**
@@ -133,14 +138,14 @@ describe("MCP Server Integration Tests", () => {
       expect(result.content[0]!.text).toContain("Todo 1 deleted successfully");
 
       // Verify it's actually deleted
-      const { getTodoById } = await import("../src/database");
+      const { getTodoById } = await import("../src/database/todo");
       const deletedTodo = await getTodoById(1);
       expect(deletedTodo).toBeNull();
     });
 
     test("should execute todo-list tool successfully", async () => {
       // Initialize project context first
-      const { initializeProjectContext } = await import("../src/database");
+      const { initializeProjectContext } = await import("../src/database/project");
       await initializeProjectContext();
 
       // Create multiple todos
@@ -150,7 +155,7 @@ describe("MCP Server Integration Tests", () => {
       await handleTodoWrite({ id: 3, content: "Low priority todo", priority: "low" });
 
       // List them
-      const { getTodosByListId } = await import("../src/database");
+      const { getTodosByListId } = await import("../src/database/todo");
       const todos = await getTodosByListId();
 
       expect(todos.length).toBe(3);
@@ -160,7 +165,7 @@ describe("MCP Server Integration Tests", () => {
     });
 
     test("should handle project-get tool", async () => {
-      const { getCurrentProject, initializeProjectContext } = await import("../src/database");
+      const { getCurrentProject, initializeProjectContext } = await import("../src/database/project");
       
       // Store the expected directory
       const expectedCwd = process.cwd();
@@ -174,7 +179,8 @@ describe("MCP Server Integration Tests", () => {
     });
 
     test("should handle todo-list creation and management", async () => {
-      const { createTodoList, getAllTodoListsForCurrentProject, initializeProjectContext } = await import("../src/database");
+      const { initializeProjectContext } = await import("../src/database/project");
+      const { createTodoList, getAllTodoListsForCurrentProject } = await import("../src/database/todo-list");
       
       // Initialize project context
       await initializeProjectContext();
@@ -228,11 +234,13 @@ describe("MCP Server Integration Tests", () => {
   describe("Data Consistency Tests", () => {
     test("should maintain data consistency across operations", async () => {
       const { handleTodoWrite, handleTodoDelete } = await import("../src/index");
-      const { getTodosByListId, getTodoListById, getCurrentDefaultTodoListId, initializeProjectContext } = await import("../src/database");
+      const { getTodosByListId } = await import("../src/database/todo");
+      const { getTodoListById } = await import("../src/database/todo-list");
+      const { initializeProjectContext } = await import("../src/database/project");
       
       // Initialize project context
-      await initializeProjectContext();
-      const defaultListId = getCurrentDefaultTodoListId()!;
+      const project = await initializeProjectContext();
+      const defaultListId = project.default_todo_list_id!;
       
       // Create multiple todos
       await handleTodoWrite({ id: 1, content: "Todo 1", status: "completed" });
@@ -262,7 +270,8 @@ describe("MCP Server Integration Tests", () => {
 
     test("should handle multiple rapid operations correctly", async () => {
       const { handleTodoWrite, handleTodoDelete } = await import("../src/index");
-      const { getTodosByListId, initializeProjectContext } = await import("../src/database");
+      const { getTodosByListId } = await import("../src/database/todo");
+      const { initializeProjectContext } = await import("../src/database/project");
       
       // Initialize project context
       await initializeProjectContext();

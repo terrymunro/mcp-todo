@@ -3,7 +3,12 @@ import * as path from "path";
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import "./utils/test-logger"; // Auto-suppress verbose output during tests
 import { createTodoServer } from "../src/index";
-import { clearAllCaches } from "../src/database";
+import { clearDatabaseConnectionCache } from "../src/database/connection";
+
+// Helper to clear database connection cache
+function clearAllCaches() {
+  clearDatabaseConnectionCache();
+}
 
 /**
  * Tests for server startup with automatic migrations in clean environment
@@ -72,7 +77,7 @@ describe("Server Startup with Migrations", () => {
     }
     
     // Initialize project context (this triggers database initialization)
-    const { initializeProjectContext } = await import("../src/database");
+    const { initializeProjectContext } = await import("../src/database/project");
     await initializeProjectContext();
     
     // Create the server
@@ -135,7 +140,7 @@ describe("Server Startup with Migrations", () => {
 
   test("should initialize project context automatically", async () => {
     // Initialize project context first
-    const { initializeProjectContext, getCurrentProject } = await import("../src/database");
+    const { initializeProjectContext, getCurrentProject } = await import("../src/database/project");
     await initializeProjectContext();
     
     // Create the server
@@ -152,7 +157,7 @@ describe("Server Startup with Migrations", () => {
 
   test("should handle multiple server startups gracefully", async () => {
     // Initialize project context first
-    const { initializeProjectContext, getCurrentProject } = await import("../src/database");
+    const { initializeProjectContext, getCurrentProject } = await import("../src/database/project");
     await initializeProjectContext();
     
     // First startup
@@ -178,7 +183,7 @@ describe("Server Startup with Migrations", () => {
 
   test("should create functional MCP tools after startup", async () => {
     // Initialize project context first
-    const { initializeProjectContext } = await import("../src/database");
+    const { initializeProjectContext } = await import("../src/database/project");
     await initializeProjectContext();
     
     // Create the server
@@ -187,7 +192,7 @@ describe("Server Startup with Migrations", () => {
     
     // Test that we can call a tool handler directly
     const { handleTodoWrite } = await import("../src/index");
-    const { getTodosByListId } = await import("../src/database");
+    const { getTodosByListId } = await import("../src/database/todo");
     
     // Create a todo
     const writeResult = await handleTodoWrite({

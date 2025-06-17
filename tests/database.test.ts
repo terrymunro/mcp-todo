@@ -5,15 +5,23 @@ import "./utils/test-logger"; // Auto-suppress verbose output during tests
 import {
   initializeProjectContext,
   getCurrentProject,
-  getCurrentDefaultTodoListId,
+} from "../src/database/project";
+import {
   getTodoListById,
+  createTodoList,
+} from "../src/database/todo-list";
+import {
   getTodosByListId,
   saveTodo,
   getTodoById,
   deleteTodo,
-  createTodoList,
-  clearAllCaches,
-} from "../src/database";
+} from "../src/database/todo";
+import { clearDatabaseConnectionCache } from "../src/database/connection";
+
+// Helper to clear database connection cache
+function clearAllCaches() {
+  clearDatabaseConnectionCache();
+}
 
 /**
  * This test-suite focuses on the higher-level helpers found in database.ts.
@@ -78,8 +86,9 @@ describe("database.ts – high-level helpers (SQL integration)", () => {
     expect(list).toBeDefined();
     expect(list!.project_id).toBe(project!.id);
 
-    // And that helper keeps the ID in memory
-    expect(getCurrentDefaultTodoListId()).toBe(project!.default_todo_list_id);
+    // Verify the project has a valid default todo list ID
+    expect(typeof project!.default_todo_list_id).toBe("number");
+    expect(project!.default_todo_list_id).toBeGreaterThan(0);
   });
 
   // ---------------------------------------------------------------------------
@@ -87,8 +96,8 @@ describe("database.ts – high-level helpers (SQL integration)", () => {
   // ---------------------------------------------------------------------------
 
   test("saveTodo() – create + update + query ordering", async () => {
-    await initializeProjectContext();
-    const todoListId = getCurrentDefaultTodoListId()!;
+    const project = await initializeProjectContext();
+    const todoListId = project.default_todo_list_id!;
 
     // 1. Create new todo  (id = 1)
     const created = await saveTodo({
@@ -186,8 +195,8 @@ describe("database.ts – high-level helpers (SQL integration)", () => {
   });
 
   test("deleteTodo() updates todo list statistics via triggers", async () => {
-    await initializeProjectContext();
-    const todoListId = getCurrentDefaultTodoListId()!;
+    const project = await initializeProjectContext();
+    const todoListId = project.default_todo_list_id!;
     
     // Create several todos
     await saveTodo({ id: 1, content: "Todo 1", status: "completed" });
