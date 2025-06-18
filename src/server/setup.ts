@@ -22,11 +22,9 @@ import {
 import { getTodosByListId, getTodoById } from "../database/todo.js";
 import { getCurrentProject } from "../database/project.js";
 import { getTodoListById, getAllTodoListsForCurrentProject } from "../database/todo-list.js";
-import { createErrorResponse, createSuccessResponse, createResourceResponse } from "../utils/response.js";
+import { createResourceResponse } from "../utils/response.js";
 import { 
-  listResources, 
-  readResource,
-  RESOURCE_URIS 
+  RESOURCE_URIS, 
 } from "../handlers/resources.js";
 
 /**
@@ -152,7 +150,7 @@ Show priority using visual cues:
         console.error("Error reading current project resource:", error);
         throw error;
       }
-    }
+    },
   );
 
   server.resource(
@@ -171,7 +169,7 @@ Show priority using visual cues:
         console.error("Error reading all todos resource:", error);
         throw error;
       }
-    }
+    },
   );
 
   server.resource(
@@ -190,7 +188,7 @@ Show priority using visual cues:
         console.error("Error reading todo lists resource:", error);
         throw error;
       }
-    }
+    },
   );
 
   server.resource(
@@ -218,7 +216,7 @@ Show priority using visual cues:
         console.error("Error reading default todo list resource:", error);
         throw error;
       }
-    }
+    },
   );
 
   // Dynamic resources with templates
@@ -232,8 +230,8 @@ Show priority using visual cues:
     },
     async (uri) => {
       try {
-        const todoIdStr = uri.pathname.split('/').pop();
-        const todoId = parseInt(todoIdStr || '', 10);
+        const todoIdStr = uri.pathname.split("/").pop();
+        const todoId = parseInt(todoIdStr || "", 10);
         
         if (isNaN(todoId)) {
           throw new Error(`Invalid todo ID: ${todoIdStr}`);
@@ -249,7 +247,7 @@ Show priority using visual cues:
         console.error("Error reading todo resource:", error);
         throw error;
       }
-    }
+    },
   );
 
   server.resource(
@@ -262,8 +260,8 @@ Show priority using visual cues:
     },
     async (uri) => {
       try {
-        const listIdStr = uri.pathname.split('/').pop();
-        const listId = parseInt(listIdStr || '', 10);
+        const listIdStr = uri.pathname.split("/").pop();
+        const listId = parseInt(listIdStr || "", 10);
         
         if (isNaN(listId)) {
           throw new Error(`Invalid todo list ID: ${listIdStr}`);
@@ -275,7 +273,7 @@ Show priority using visual cues:
         console.error("Error reading todos by list resource:", error);
         throw error;
       }
-    }
+    },
   );
 
   server.resource(
@@ -288,8 +286,8 @@ Show priority using visual cues:
     },
     async (uri) => {
       try {
-        const listIdStr = uri.pathname.split('/').pop();
-        const listId = parseInt(listIdStr || '', 10);
+        const listIdStr = uri.pathname.split("/").pop();
+        const listId = parseInt(listIdStr || "", 10);
         
         if (isNaN(listId)) {
           throw new Error(`Invalid todo list ID: ${listIdStr}`);
@@ -305,7 +303,7 @@ Show priority using visual cues:
         console.error("Error reading todo list resource:", error);
         throw error;
       }
-    }
+    },
   );
 
   // Tool to write or update a todo item

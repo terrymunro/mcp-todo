@@ -1,18 +1,17 @@
 import { 
   getTodoById, 
-  getTodosByListId 
+  getTodosByListId, 
 } from "../database/todo.js";
 import { 
-  getCurrentProject 
+  getCurrentProject, 
 } from "../database/project.js";
 import { 
   getTodoListById, 
-  getAllTodoListsForCurrentProject 
+  getAllTodoListsForCurrentProject, 
 } from "../database/todo-list.js";
 import { 
-  createResourceResponse, 
-  createResourceListResponse,
-  type ResourceListItem 
+  createResourceResponse,
+  type ResourceListItem, 
 } from "../utils/response.js";
 
 /**
@@ -91,7 +90,7 @@ export async function listResources() {
     for (const todo of todos) {
       resources.push({
         uri: `${RESOURCE_URIS.TODO_BY_ID}${todo.id}`,
-        name: `Todo: ${todo.content.substring(0, 50)}${todo.content.length > 50 ? '...' : ''}`,
+        name: `Todo: ${todo.content.substring(0, 50)}${todo.content.length > 50 ? "..." : ""}`,
         description: `Individual todo item: ${todo.content}`,
         mimeType: "application/json",
       });

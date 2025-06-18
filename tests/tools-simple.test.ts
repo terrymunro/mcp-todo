@@ -1,8 +1,48 @@
-import { describe, test, expect } from "bun:test";
+import * as fs from "fs/promises";
+import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import "./utils/test-logger"; // Auto-suppress verbose output during tests
 import { getTodoById } from "../src/database/todo";
 import { createTodoList } from "../src/database/todo-list";
 import { handleTodoWrite, handleTodoWriteBatch, handleTodoDelete, handleTodoDeleteBatch, handleTodoListMoveBatch, TodoStatusSchema, TodoPrioritySchema } from "../src/index";
+import { clearDatabaseConnectionCache } from "../src/database/connection";
+
+// Test isolation setup
+let testDataDir: string;
+let originalCwd: () => string;
+let originalXdg: string | undefined;
+
+beforeEach(async () => {
+  // 1. Isolate cwd – pretend we are inside a test project
+  originalCwd = process.cwd;
+  const projectDir = `/tmp/mcp-todo-test-handlers-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+  process.cwd = () => projectDir;
+  await fs.mkdir(projectDir, { recursive: true });
+
+  // 2. Point XDG_DATA_HOME at a unique dir for database isolation
+  originalXdg = process.env.XDG_DATA_HOME;
+  testDataDir = `/tmp/mcp-todo-handler-data-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+  process.env.XDG_DATA_HOME = testDataDir;
+  await fs.mkdir(testDataDir, { recursive: true });
+
+  // 3. Clear database connection cache to ensure fresh connections
+  clearDatabaseConnectionCache();
+});
+
+afterEach(async () => {
+  // Clear database connection cache to prevent test pollution
+  clearDatabaseConnectionCache();
+
+  // Restore environment
+  process.cwd = originalCwd;
+  if (originalXdg !== undefined) {
+    process.env.XDG_DATA_HOME = originalXdg;
+  } else {
+    delete process.env.XDG_DATA_HOME;
+  }
+
+  // Best-effort cleanup (ignore errors if directories don't exist)
+  await fs.rm(testDataDir, { recursive: true, force: true }).catch(() => {});
+});
 
 describe("MCP Tool Handler Validation", () => {
   describe("Schema validation", () => {
@@ -26,7 +66,7 @@ describe("MCP Tool Handler Validation", () => {
   describe("handleTodoWrite function", () => {
     test("should return error when creating todo without content", async () => {
       const result = await handleTodoWrite({
-        id: 999991, // Use a unique ID that shouldn't exist
+        id: Date.now() + 10000, // Use a unique ID that shouldn't exist
         priority: "high",
       });
 
@@ -110,39 +150,42 @@ describe("Input Validation Edge Cases", () => {
   test("should handle very long content strings", async () => {
     // Create a string that's ~5000 characters long
     const longContent = "A".repeat(5000);
+    const testId = Date.now() + 70000;
     
     const result = await handleTodoWrite({
-      id: 1,
+      id: testId,
       content: longContent,
       priority: "medium",
     });
 
     // Should succeed (assuming no length limit in schema)
-    expect(result.content[0]!.text).toContain("Todo 1 saved successfully");
+    expect(result.content[0]!.text).toContain(`Todo ${testId} saved successfully`);
   });
 
   test("should handle content with special characters and unicode", async () => {
     const specialContent = "Test with special chars: !@#$%^&*(){}[]|\\:;\"'<>,.?/~`+=\n\t\r";
+    const testId = Date.now() + 80000;
     
     const result = await handleTodoWrite({
-      id: 2,
+      id: testId,
       content: specialContent,
       priority: "high",
     });
 
-    expect(result.content[0]!.text).toContain("Todo 2 saved successfully");
+    expect(result.content[0]!.text).toContain(`Todo ${testId} saved successfully`);
   });
 
   test("should handle unicode characters in content", async () => {
     const unicodeContent = "Unicode test: 你好世界 🌍 emoji test 🚀 ñáéíóú àèìòù äöü";
+    const testId = Date.now() + 90000;
     
     const result = await handleTodoWrite({
-      id: 3,
+      id: testId,
       content: unicodeContent,
       priority: "low",
     });
 
-    expect(result.content[0]!.text).toContain("Todo 3 saved successfully");
+    expect(result.content[0]!.text).toContain(`Todo ${testId} saved successfully`);
   });
 
   test("should handle boundary values for todo IDs", async () => {
@@ -173,8 +216,9 @@ describe("Input Validation Edge Cases", () => {
 
   test("should handle empty strings correctly", async () => {
     // Test creating a todo with empty content (should fail)
+    const testId = Date.now() + 120000;
     const resultEmpty = await handleTodoWrite({
-      id: 999,
+      id: testId,
       content: "",
     });
     
@@ -184,25 +228,27 @@ describe("Input Validation Edge Cases", () => {
 
   test("should handle content with only whitespace", async () => {
     const whitespaceContent = "   \t\n\r   ";
+    const testId = Date.now() + 100000;
     
     const result = await handleTodoWrite({
-      id: 4,
+      id: testId,
       content: whitespaceContent,
     });
 
-    expect(result.content[0]!.text).toContain("Todo 4 saved successfully");
+    expect(result.content[0]!.text).toContain(`Todo ${testId} saved successfully`);
   });
 
   test("should handle SQL-like characters in content", async () => {
     const sqlContent = "'; DROP TABLE todos; SELECT * FROM users WHERE id='1";
+    const testId = Date.now() + 110000;
     
     const result = await handleTodoWrite({
-      id: 5,
+      id: testId,
       content: sqlContent,
     });
 
     // Should be safe due to Drizzle ORM's parameter binding
-    expect(result.content[0]!.text).toContain("Todo 5 saved successfully");
+    expect(result.content[0]!.text).toContain(`Todo ${testId} saved successfully`);
   });
 });
 
@@ -284,10 +330,11 @@ describe("handleTodoWriteBatch function", () => {
   });
 
   test("should handle validation errors in batch", async () => {
+    const baseId = Date.now() + 130000;
     const todos = [
-      { id: 9999991, content: "Valid todo" }, // Valid
-      { id: 9999992 }, // Invalid - no content for new todo
-      { id: 9999993, content: "Another valid todo" }, // Valid
+      { id: baseId + 1, content: "Valid todo" }, // Valid
+      { id: baseId + 2 }, // Invalid - no content for new todo
+      { id: baseId + 3, content: "Another valid todo" }, // Valid
     ];
 
     const result = await handleTodoWriteBatch({ todos });
@@ -354,8 +401,9 @@ describe("handleTodoDeleteBatch function", () => {
     });
 
     // Try to delete one existing and one non-existent todo
+    const nonExistentId = Date.now() + 140000;
     const result = await handleTodoDeleteBatch({ 
-      todo_ids: [baseId, 9999999], // One valid, one invalid
+      todo_ids: [baseId, nonExistentId], // One valid, one invalid
     });
 
     expect(result.content[0]!.text).toContain("Batch delete completed");
@@ -447,8 +495,9 @@ describe("handleTodoListMoveBatch function", () => {
     });
 
     // Try to move one existing and one non-existent todo
+    const nonExistentId = Date.now() + 150000;
     const result = await handleTodoListMoveBatch({ 
-      todo_ids: [baseId, 9999999], // One valid, one invalid
+      todo_ids: [baseId, nonExistentId], // One valid, one invalid
       target_todo_list_id: targetList.id,
     });
 
@@ -461,18 +510,20 @@ describe("handleTodoListMoveBatch function", () => {
   });
 
   test("should return error for empty todo_ids array", async () => {
+    const validListId = Date.now() + 160000;
     const result = await handleTodoListMoveBatch({ 
       todo_ids: [], 
-      target_todo_list_id: 1, 
+      target_todo_list_id: validListId, 
     });
 
     expect(result.content[0]!.text).toBe("At least one todo ID must be provided.");
   });
 
   test("should validate todo IDs are numbers", async () => {
+    const validListId = Date.now() + 170000;
     const result = await handleTodoListMoveBatch({ 
       todo_ids: ["invalid" as any, 123],
-      target_todo_list_id: 1,
+      target_todo_list_id: validListId,
     });
 
     expect(result.content[0]!.text).toContain("Todo ID at index 0 must be a valid number");
@@ -498,13 +549,14 @@ describe("handleTodoListMoveBatch function", () => {
     });
 
     // Try to move to non-existent list
+    const nonExistentListId = Date.now() + 180000;
     const result = await handleTodoListMoveBatch({ 
       todo_ids: [baseId],
-      target_todo_list_id: 9999999, // Non-existent list
+      target_todo_list_id: nonExistentListId, // Non-existent list
     });
 
     expect(result.content[0]!.text).toContain("Failed to move todos batch");
-    expect(result.content[0]!.text).toContain("Target todo list with ID 9999999 not found");
+    expect(result.content[0]!.text).toContain(`Target todo list with ID ${nonExistentListId} not found`);
   });
 
   test("should handle moving non-existent todos gracefully", async () => {

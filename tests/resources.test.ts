@@ -3,7 +3,7 @@ import "./utils/test-logger"; // Auto-suppress verbose output during tests
 import { 
   listResources, 
   readResource, 
-  RESOURCE_URIS 
+  RESOURCE_URIS, 
 } from "../src/handlers/resources";
 import { createTodoList } from "../src/database/todo-list";
 import { saveTodo } from "../src/database/todo";
@@ -241,44 +241,44 @@ describe("MCP Resource Handlers", () => {
   describe("Error handling", () => {
     test("should throw error for unknown resource URI", async () => {
       await expect(readResource("todo://unknown/resource")).rejects.toThrow(
-        "Unknown resource URI: todo://unknown/resource"
+        "Unknown resource URI: todo://unknown/resource",
       );
     });
 
     test("should throw error for invalid todo ID", async () => {
       await expect(readResource(`${RESOURCE_URIS.TODO_BY_ID}invalid`)).rejects.toThrow(
-        "Invalid todo ID: invalid"
+        "Invalid todo ID: invalid",
       );
     });
 
     test("should throw error for non-existent todo", async () => {
       await expect(readResource(`${RESOURCE_URIS.TODO_BY_ID}999999`)).rejects.toThrow(
-        "Todo with ID 999999 not found"
+        "Todo with ID 999999 not found",
       );
     });
 
     test("should throw error for invalid todo list ID", async () => {
       await expect(readResource(`${RESOURCE_URIS.LIST_BY_ID}invalid`)).rejects.toThrow(
-        "Invalid todo list ID: invalid"
+        "Invalid todo list ID: invalid",
       );
     });
 
     test("should throw error for non-existent todo list", async () => {
       await expect(readResource(`${RESOURCE_URIS.LIST_BY_ID}999999`)).rejects.toThrow(
-        "Todo list with ID 999999 not found"
+        "Todo list with ID 999999 not found",
       );
     });
 
     test("should throw error for invalid todos list ID", async () => {
       await expect(readResource(`${RESOURCE_URIS.TODOS_LIST}invalid`)).rejects.toThrow(
-        "Invalid todo list ID: invalid"
+        "Invalid todo list ID: invalid",
       );
     });
   });
 
   describe("URI patterns", () => {
     test("should validate all RESOURCE_URIS are properly formed", () => {
-      for (const [key, uri] of Object.entries(RESOURCE_URIS)) {
+      for (const [, uri] of Object.entries(RESOURCE_URIS)) {
         expect(typeof uri).toBe("string");
         expect(uri.startsWith("todo://")).toBe(true);
         expect(uri.length).toBeGreaterThan("todo://".length);

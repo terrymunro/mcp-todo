@@ -88,7 +88,7 @@ export const ResourceUriSchema = z
   .string()
   .refine(
     (uri) => uri.startsWith("todo://"),
-    "Resource URI must start with 'todo://'"
+    "Resource URI must start with 'todo://'",
   )
   .describe("MCP resource URI for todo data");
 
