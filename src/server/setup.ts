@@ -7,18 +7,14 @@ import {
 import { 
   handleTodoWrite, 
   handleTodoWriteBatch, 
-  handleTodoRead, 
   handleTodoDelete, 
   handleTodoDeleteBatch, 
   handleTodoListMoveBatch, 
 } from "../handlers/todo.js";
 import { 
-  handleProjectGet, 
   handleProjectUpdate, 
 } from "../handlers/project.js";
 import { 
-  handleTodoListList, 
-  handleTodoListGet, 
   handleTodoListCreate, 
   handleTodoListUpdate, 
   handleTodoListDelete, 
@@ -52,12 +48,25 @@ export function createTodoServer(): McpServer {
 
 A todo list management server: use the tools in this server to maintain task/todo lists for tracking progress against long and short-term plans.
 
-## Tools
+## Resources (Read Operations)
+
+MCP Resources provide efficient, discoverable access to todo data without tool invocation overhead:
+
+### Static Resources
+- **todo://project/current**: Current project details (name, location, default todo list)
+- **todo://todos/all**: All todos from default list, sorted by priority (high → medium → low) 
+- **todo://lists/all**: All todo lists for current project
+- **todo://list/default**: Default todo list details
+
+### Dynamic Resources (Auto-discovered)
+- **todo://todo/{id}**: Individual todo item by ID
+- **todo://todos/list/{id}**: All todos within specific todo list
+- **todo://list/{id}**: Specific todo list details by ID
+
+## Tools (Write Operations)
 
 ### Core Todo Management
 - **todo-write**: Create new todos or update existing ones (supports PATCH operations). Use when adding tasks to your plan or updating task status/priority.
-- **todo-read**: Retrieve a specific todo by ID. Use when you need details about a particular task.
-- **todo-list**: List all todos sorted by priority (high → medium → low). Use to display current task status and plan overview.
 - **todo-delete**: Remove a single todo. Use when a task is no longer relevant or was added by mistake.
 
 ### Batch Operations  
@@ -66,12 +75,9 @@ A todo list management server: use the tools in this server to maintain task/tod
 - **todo-list-move-batch**: Move multiple todos between different lists. Use when reorganizing tasks across projects or categories.
 
 ### Project Management
-- **project-get**: Get current project details (name, location, default todo list). Use to understand the current working context.
 - **project-update**: Update project name or default todo list. Use when renaming projects or changing organizational structure.
 
 ### Todo List Organization
-- **todo-list-list**: List all todo lists for the current project. Use to see available categories/lists for task organization.
-- **todo-list-get**: Get details of a specific todo list or the default list. Use to understand list structure and statistics.
 - **todo-list-create**: Create new todo lists for categorizing tasks. Use when starting new project phases or organizing by theme.
 - **todo-list-update**: Update todo list name or description. Use when reorganizing or clarifying list purposes.
 - **todo-list-delete**: Delete a todo list and all its todos. Use when project phases are complete or categories are no longer needed.
@@ -93,24 +99,30 @@ Show priority using visual cues:
 ### Workflow Guidelines
 
 **When starting a new project or plan:**
-1. Use \`project-get\` to understand current context
-2. Use \`todo-list-create\` to organize tasks by theme/phase if needed
-3. Use \`todo-write-batch\` to add multiple planned tasks efficiently
+1. Access \`todo://project/current\` resource to understand current context
+2. Use \`todo-list-create\` tool to organize tasks by theme/phase if needed
+3. Use \`todo-write-batch\` tool to add multiple planned tasks efficiently
 
 **During active work:**
-1. Use \`todo-list\` to see current priorities and status
-2. Use \`todo-write\` to update task status as work progresses
-3. Use \`todo-write\` to add new tasks discovered during implementation
+1. Access \`todo://todos/all\` resource to see current priorities and status
+2. Use \`todo-write\` tool to update task status as work progresses
+3. Use \`todo-write\` tool to add new tasks discovered during implementation
 
 **For project organization:**
-1. Group related tasks using different todo lists (e.g., "Sprint 1", "Documentation", "Testing")
-2. Use priority levels to indicate urgency within each list
-3. Use batch operations when making systematic changes across multiple tasks
+1. Access \`todo://lists/all\` resource to see available todo lists
+2. Group related tasks using different todo lists (e.g., "Sprint 1", "Documentation", "Testing")
+3. Use priority levels to indicate urgency within each list
+4. Use batch operations when making systematic changes across multiple tasks
 
 **For progress tracking:**
-1. Regularly update task status to reflect actual progress
+1. Regularly update task status to reflect actual progress using tools
 2. Use the visual indicators when presenting status to stakeholders
-3. Use \`todo-list\` to generate progress reports sorted by priority`,
+3. Access \`todo://todos/all\` or \`todo://todos/list/{id}\` resources to generate progress reports sorted by priority
+
+**Resource vs Tool Usage:**
+- Use **Resources** for reading/browsing data efficiently
+- Use **Tools** for creating, updating, and deleting data
+- Resources automatically reflect current state including changes made through tools`,
     capabilities: {
       tools: { listChanged: true },
       resources: { subscribe: true, listChanged: true },
@@ -364,46 +376,7 @@ Show priority using visual cues:
     },
   );
 
-  // Tool to read a specific todo item by its ID
-  server.tool(
-    "todo-read",
-    'Retrieve a specific todo item by its ID. Returns the complete todo object with all fields (id, content, status, priority).\n\nExample:\n• Get todo: {id: 1}\n  Returns: {"id": 1, "content": "Fix bug", "status": "pending", "priority": "high"}',
-    {
-      id: z.number().describe("The ID of the todo item to retrieve."),
-      todo_list_id: z
-        .number()
-        .optional()
-        .describe(
-          "The ID of the todo list to search in. Optional - the todo will be found regardless of which list it's in.",
-        ),
-    },
-    async ({ id }) => {
-      return await handleTodoRead({ id });
-    },
-  );
 
-  // Tool to list all todo items, ordered by priority
-  server.tool(
-    "todo-list",
-    'List all todo items sorted by priority (high → medium → low). Returns an array of all todos with complete details.\n\nExample:\n• No parameters needed\n  Returns: {"todos": [{"id": 1, "content": "Fix bug", "status": "pending", "priority": "high"}, ...]}',
-    {
-      todo_list_id: z
-        .number()
-        .optional()
-        .describe(
-          "The ID of the todo list to retrieve todos from. Defaults to the current project's default todo list.",
-        ),
-    },
-    async ({ todo_list_id }) => {
-      try {
-        const todos = await getTodosByListId(todo_list_id);
-        return createSuccessResponse({ todos });
-      } catch (error) {
-        console.error("Error in TodoList handler:", error);
-        return createErrorResponse(`Failed to list todos: ${error instanceof Error ? error.message : "Unknown error"}`);
-      }
-    },
-  );
 
   // Tool to delete a specific todo item
   server.tool(
@@ -442,15 +415,6 @@ Show priority using visual cues:
     },
   );
 
-  // Tool to get current project details
-  server.tool(
-    "project-get",
-    'Get the current project details including name, location, and default todo list.\n\nExample:\n• No parameters needed\n  Returns: {"id": 1, "name": "My Project", "location": "/path/to/project", "default_todo_list_id": 1}',
-    {},
-    async () => {
-      return await handleProjectGet();
-    },
-  );
 
   // Tool to update current project
   server.tool(
@@ -468,39 +432,7 @@ Show priority using visual cues:
     },
   );
 
-  // Tool to list all todo lists
-  server.tool(
-    "todo-list-list",
-    `List all todo lists for the current project.
-Example:
-• No parameters needed
-  Returns: {"todo_lists": [{"id": 1, "name": "Default", "description": "...", "num_completed": 5, "total_count": 10}, ...]}`,
-    {},
-    async () => {
-      return await handleTodoListList();
-    },
-  );
 
-  // Tool to get details of a specific todo list
-  server.tool(
-    "todo-list-get",
-    `Get details of a specific todo list by ID, or get the default todo list if no ID provided.
-
-Examples:
-• Get specific list: {id: 1}
-• Get default list: {} (no parameters)`,
-    {
-      id: z
-        .number()
-        .optional()
-        .describe(
-          "The ID of the todo list to retrieve. If not provided, returns the current project's default todo list.",
-        ),
-    },
-    async ({ id }) => {
-      return await handleTodoListGet({ id });
-    },
-  );
 
   // Tool to create a new todo list
   server.tool(

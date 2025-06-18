@@ -1,11 +1,8 @@
 import { 
-  getTodoListById, 
-  getAllTodoListsForCurrentProject, 
   createTodoList, 
   updateTodoList, 
   deleteTodoList, 
 } from "../database/todo-list.js";
-import { getCurrentProject } from "../database/project.js";
 import { createErrorResponse, createSuccessResponse } from "../utils/response.js";
 
 /**
@@ -15,50 +12,7 @@ import { createErrorResponse, createSuccessResponse } from "../utils/response.js
  * Handles all todo-list-related MCP tool operations
  */
 
-/**
- * Handle todo list listing operations
- */
-export async function handleTodoListList() {
-  try {
-    const todoLists = await getAllTodoListsForCurrentProject();
-    return createSuccessResponse({ todo_lists: todoLists });
-  } catch (error) {
-    console.error("Error in todo_list-list handler:", error);
-    return createErrorResponse(`Failed to list todo lists: ${error instanceof Error ? error.message : "Unknown error"}`);
-  }
-}
 
-/**
- * Handle todo list get operations
- */
-export async function handleTodoListGet({ id }: { id?: number }) {
-  try {
-    let todoListId = id;
-
-    // If no ID provided, get the default from current project
-    if (!todoListId) {
-      const currentProject = await getCurrentProject();
-      if (currentProject?.default_todo_list_id) {
-        todoListId = currentProject.default_todo_list_id;
-      }
-    }
-
-    if (!todoListId) {
-      return createErrorResponse("No todo list ID provided and no default todo list available.");
-    }
-
-    const todoList = await getTodoListById(todoListId);
-
-    if (todoList) {
-      return createSuccessResponse(todoList);
-    } else {
-      return createErrorResponse(`Todo list with ID ${todoListId} not found.`);
-    }
-  } catch (error) {
-    console.error("Error in todo_list-get handler:", error);
-    return createErrorResponse(`Failed to get todo list: ${error instanceof Error ? error.message : "Unknown error"}`);
-  }
-}
 
 /**
  * Handle todo list creation operations

@@ -203,19 +203,3 @@ export async function handleTodoListMoveBatch({
   }
 }
 
-/**
- * Handle todo read operations
- */
-export async function handleTodoRead({ id }: { id: number }) {
-  try {
-    const todo = await getTodoById(id);
-    if (todo) {
-      return createSuccessResponse(todo);
-    } else {
-      return createErrorResponse(`Todo with ID ${id} not found.`);
-    }
-  } catch (error) {
-    console.error("Error in TodoRead handler:", error);
-    return createErrorResponse(`Failed to read todo ${id}: ${error instanceof Error ? error.message : "Unknown error"}`);
-  }
-}

@@ -8,22 +8,6 @@ import { createErrorResponse, createSuccessResponse } from "../utils/response.js
  * Handles all project-related MCP tool operations
  */
 
-/**
- * Handle project get operations
- */
-export async function handleProjectGet() {
-  try {
-    const currentProject = await getCurrentProject();
-    if (currentProject) {
-      return createSuccessResponse(currentProject);
-    } else {
-      return createErrorResponse("No current project found.");
-    }
-  } catch (error) {
-    console.error("Error in project-get handler:", error);
-    return createErrorResponse(`Failed to get project: ${error instanceof Error ? error.message : "Unknown error"}`);
-  }
-}
 
 /**
  * Handle project update operations

@@ -12,18 +12,14 @@ export { createErrorResponse, createSuccessResponse } from "./utils/response.js"
 export {
   handleTodoWrite,
   handleTodoWriteBatch,
-  handleTodoRead,
   handleTodoDelete,
   handleTodoDeleteBatch,
   handleTodoListMoveBatch,
 } from "./handlers/todo.js";
 export {
-  handleProjectGet,
   handleProjectUpdate,
 } from "./handlers/project.js";
 export {
-  handleTodoListList,
-  handleTodoListGet,
   handleTodoListCreate,
   handleTodoListUpdate,
   handleTodoListDelete,
@@ -53,29 +49,26 @@ export async function main() {
   console.log("MCP Todo Server is running.");
   console.log(
     `Available tools:
-- todo-write
-- todo-write-batch
-- todo-read
-- todo-list
-- todo-delete
-- todo-delete-batch
-- todo-list-move-batch
-- project-get
-- project-update
-- todo-list-list
-- todo-list-get
-- todo-list-create
-- todo-list-update
-- todo-list-delete
+- todo-write - Create/update todo items
+- todo-write-batch - Create/update multiple todos
+- todo-delete - Delete a todo item
+- todo-delete-batch - Delete multiple todos
+- todo-list-move-batch - Move todos between lists
+- project-update - Update project settings
+- todo-list-create - Create new todo lists
+- todo-list-update - Update todo list details
+- todo-list-delete - Delete todo lists
 
-Available resources:
+Available resources (for reading data efficiently):
 - todo://project/current - Current project details
 - todo://todos/all - All todos from default list
 - todo://lists/all - All todo lists for current project
 - todo://list/default - Default todo list details
 - todo://todo/{id} - Individual todo by ID
 - todo://todos/list/{id} - Todos in specific list
-- todo://list/{id} - Specific todo list details`,
+- todo://list/{id} - Specific todo list details
+
+ℹ️  Use resources for reading data, tools for modifications.`,
   );
 }
 
