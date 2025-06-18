@@ -19,6 +19,13 @@ import {
   handleTodoListUpdate, 
   handleTodoListDelete, 
 } from "../handlers/todo-list.js";
+import { 
+  handleProjectPlanningPrompt,
+  handleStatusReviewPrompt,
+  handleTaskPrioritizationPrompt,
+  handleSprintPlanningPrompt,
+  handleCleanupSuggestionsPrompt,
+} from "../handlers/prompts.js";
 import { getTodosByListId, getTodoById } from "../database/todo.js";
 import { getCurrentProject } from "../database/project.js";
 import { getTodoListById, getAllTodoListsForCurrentProject } from "../database/todo-list.js";
@@ -120,10 +127,33 @@ Show priority using visual cues:
 **Resource vs Tool Usage:**
 - Use **Resources** for reading/browsing data efficiently
 - Use **Tools** for creating, updating, and deleting data
-- Resources automatically reflect current state including changes made through tools`,
+- Resources automatically reflect current state including changes made through tools
+
+## Prompts (AI-Assisted Workflows)
+
+MCP Prompts provide intelligent, context-aware templates for common todo management workflows:
+
+### Planning & Strategy
+- **project-planning**: Break down large goals into actionable tasks with priority assignments
+- **sprint-planning**: Create focused work sessions based on capacity and timeline constraints  
+- **task-prioritization**: Analyze pending tasks and suggest priority levels using various criteria
+
+### Analysis & Review
+- **status-review**: Generate comprehensive progress reports with completion rates and recommendations
+- **cleanup-suggestions**: Analyze todo list for archival opportunities and organizational improvements
+
+### Using Prompts
+Prompts combine current project data with AI analysis to provide:
+- Context-aware recommendations based on your actual todos
+- Structured workflows for common management tasks  
+- Integration suggestions for using tools and resources effectively
+- Customizable parameters for different scenarios and preferences
+
+Each prompt automatically incorporates your current project state, todo lists, and task data to provide relevant, actionable guidance.`,
     capabilities: {
       tools: { listChanged: true },
       resources: { subscribe: true, listChanged: true },
+      prompts: { listChanged: true },
       logging: {},
     },
   });
@@ -474,6 +504,77 @@ Show priority using visual cues:
     },
     async ({ id }) => {
       return await handleTodoListDelete({ id });
+    },
+  );
+
+  // ========================================
+  // PROMPT REGISTRATIONS
+  // ========================================
+  
+  // Project Planning Prompt - Break down goals into actionable tasks
+  server.prompt(
+    "project-planning",
+    "Break down a large goal into specific, actionable tasks with priority assignments and organization suggestions",
+    {
+      goal: z.string().describe("The main goal or objective you want to achieve"),
+      timeframe: z.string().optional().describe("Optional timeframe for achieving the goal (e.g., '2 weeks', 'by end of month')"),
+      complexity: z.enum(["simple", "moderate", "complex"]).optional().describe("Complexity level of the goal to adjust task granularity"),
+    },
+    async ({ goal, timeframe, complexity }) => {
+      return await handleProjectPlanningPrompt({ goal, timeframe, complexity });
+    },
+  );
+
+  // Status Review Prompt - Generate comprehensive progress reports
+  server.prompt(
+    "status-review",
+    "Generate a comprehensive progress report analyzing current todo status, completion rates, and recommendations",
+    {
+      focus: z.enum(["all", "high-priority", "in-progress", "completed"]).optional().describe("Focus area for the status review"),
+      period: z.enum(["today", "week", "month", "all-time"]).optional().describe("Time period scope for the review"),
+    },
+    async ({ focus, period }) => {
+      return await handleStatusReviewPrompt({ focus, period });
+    },
+  );
+
+  // Task Prioritization Prompt - Analyze and suggest priority levels
+  server.prompt(
+    "task-prioritization", 
+    "Analyze pending tasks and suggest priority levels based on various criteria like urgency, impact, effort, and dependencies",
+    {
+      criteria: z.enum(["urgency", "impact", "effort", "dependencies", "balanced"]).optional().describe("Primary criteria for prioritization analysis"),
+      deadline: z.string().optional().describe("Optional deadline to factor into prioritization decisions"),
+    },
+    async ({ criteria, deadline }) => {
+      return await handleTaskPrioritizationPrompt({ criteria, deadline });
+    },
+  );
+
+  // Sprint Planning Prompt - Create focused work sessions
+  server.prompt(
+    "sprint-planning",
+    "Plan a focused work sprint by selecting appropriate tasks based on capacity, timeline, and focus areas",
+    {
+      duration: z.string().optional().describe("Sprint duration (e.g., '1 week', '2 weeks', '1 month')"),
+      capacity: z.enum(["light", "normal", "heavy"]).optional().describe("Work capacity level for the sprint"),
+      focus_area: z.string().optional().describe("Specific area or theme to focus on during the sprint"),
+    },
+    async ({ duration, capacity, focus_area }) => {
+      return await handleSprintPlanningPrompt({ duration, capacity, focus_area });
+    },
+  );
+
+  // Cleanup Suggestions Prompt - Recommend archival and deletion actions
+  server.prompt(
+    "cleanup-suggestions",
+    "Analyze the todo list for cleanup opportunities, suggesting tasks to archive, delete, or reorganize based on age and patterns",
+    {
+      age_threshold: z.string().optional().describe("Age threshold for considering tasks stale (e.g., '30 days', '2 months')"),
+      include_completed: z.boolean().optional().describe("Whether to include completed tasks in cleanup analysis"),
+    },
+    async ({ age_threshold, include_completed }) => {
+      return await handleCleanupSuggestionsPrompt({ age_threshold, include_completed });
     },
   );
 

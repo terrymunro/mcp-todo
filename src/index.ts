@@ -29,6 +29,13 @@ export {
   readResource,
   RESOURCE_URIS,
 } from "./handlers/resources.js";
+export {
+  handleProjectPlanningPrompt,
+  handleStatusReviewPrompt,
+  handleTaskPrioritizationPrompt,
+  handleSprintPlanningPrompt,
+  handleCleanupSuggestionsPrompt,
+} from "./handlers/prompts.js";
 
 // Export server creation function for testing and external use
 export { createTodoServer } from "./server/setup.js";
@@ -68,7 +75,14 @@ Available resources (for reading data efficiently):
 - todo://todos/list/{id} - Todos in specific list
 - todo://list/{id} - Specific todo list details
 
-ℹ️  Use resources for reading data, tools for modifications.`,
+Available prompts (AI-assisted workflows):
+- project-planning - Break down goals into actionable tasks
+- status-review - Generate comprehensive progress reports
+- task-prioritization - Analyze and suggest priority levels
+- sprint-planning - Plan focused work sessions
+- cleanup-suggestions - Recommend archival and cleanup actions
+
+ℹ️  Use resources for reading, tools for modifications, prompts for AI guidance.`,
   );
 }
 
