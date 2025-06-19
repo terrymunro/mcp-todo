@@ -1,5 +1,6 @@
 import * as fs from "fs/promises";
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
+import "./utils/test-logger"; // Auto-suppress verbose output during tests
 import {
   handleProjectPlanningPrompt,
   handleStatusReviewPrompt,
@@ -113,11 +114,11 @@ describe("Prompt Handlers", () => {
       expect(result).toBeDefined();
       expect(result.description).toBe("Break down a goal into actionable tasks with priority assignments");
       expect(result.messages).toHaveLength(1);
-      expect(result.messages[0].role).toBe("user");
-      expect(result.messages[0].content.type).toBe("text");
-      expect(result.messages[0].content.text).toContain("Build a new web application");
-      expect(result.messages[0].content.text).toContain("Task Breakdown");
-      expect(result.messages[0].content.text).toContain("Priority Assignment");
+      expect(result.messages[0]?.role).toBe("user");
+      expect(result.messages[0]?.content.type).toBe("text");
+      expect(result.messages[0]?.content.text).toContain("Build a new web application");
+      expect(result.messages[0]?.content.text).toContain("Task Breakdown");
+      expect(result.messages[0]?.content.text).toContain("Priority Assignment");
     });
 
     test("should include timeframe and complexity in prompt", async () => {
@@ -127,8 +128,8 @@ describe("Prompt Handlers", () => {
         complexity: "complex",
       });
 
-      expect(result.messages[0].content.text).toContain("within 2 weeks");
-      expect(result.messages[0].content.text).toContain("complex goal");
+      expect(result.messages[0]?.content.text).toContain("within 2 weeks");
+      expect(result.messages[0]?.content.text).toContain("complex goal");
     });
 
     test("should handle errors gracefully", async () => {
@@ -150,10 +151,10 @@ describe("Prompt Handlers", () => {
       expect(result).toBeDefined();
       expect(result.description).toBe("Generate a comprehensive progress report from current todo data");
       expect(result.messages).toHaveLength(1);
-      expect(result.messages[0].content.text).toContain("Status Review");
-      expect(result.messages[0].content.text).toContain("**Total todos**:");
-      expect(result.messages[0].content.text).toContain("**Completed**:");
-      expect(result.messages[0].content.text).toContain("**High Priority**:");
+      expect(result.messages[0]?.content.text).toContain("Status Review");
+      expect(result.messages[0]?.content.text).toContain("**Total todos**:");
+      expect(result.messages[0]?.content.text).toContain("**Completed**:");
+      expect(result.messages[0]?.content.text).toContain("**High Priority**:");
     });
 
     test("should respect focus parameter", async () => {
@@ -162,16 +163,16 @@ describe("Prompt Handlers", () => {
         period: "week",
       });
 
-      expect(result.messages[0].content.text).toContain("high-priority focus");
-      expect(result.messages[0].content.text).toContain("week scope");
+      expect(result.messages[0]?.content.text).toContain("high-priority focus");
+      expect(result.messages[0]?.content.text).toContain("week scope");
     });
 
     test("should include todo details in output", async () => {
       const result = await handleStatusReviewPrompt({ focus: "all" });
 
       // Check that the prompt structure includes sections for analysis
-      expect(result.messages[0].content.text).toContain("Progress Analysis");
-      expect(result.messages[0].content.text).toContain("Priority Assessment");
+      expect(result.messages[0]?.content.text).toContain("Progress Analysis");
+      expect(result.messages[0]?.content.text).toContain("Priority Assessment");
     });
   });
 
@@ -181,9 +182,9 @@ describe("Prompt Handlers", () => {
 
       expect(result).toBeDefined();
       expect(result.description).toBe("Analyze pending tasks and suggest priority levels based on various criteria");
-      expect(result.messages[0].content.text).toContain("Task Prioritization Analysis");
-      expect(result.messages[0].content.text).toContain("tasks need prioritization");
-      expect(result.messages[0].content.text).toContain("**balanced** criteria");
+      expect(result.messages[0]?.content.text).toContain("Task Prioritization Analysis");
+      expect(result.messages[0]?.content.text).toContain("tasks need prioritization");
+      expect(result.messages[0]?.content.text).toContain("**balanced** criteria");
     });
 
     test("should include criteria and deadline", async () => {
@@ -192,17 +193,18 @@ describe("Prompt Handlers", () => {
         deadline: "end of month",
       });
 
-      expect(result.messages[0].content.text).toContain("**Urgency Criteria**:");
-      expect(result.messages[0].content.text).toContain("deadline: end of month");
+      expect(result.messages[0]?.content.text).toContain("Urgency Criteria");
+      expect(result.messages[0]?.content.text).toContain("Time sensitivity and deadlines");
+      expect(result.messages[0]?.content.text).toContain("deadline: end of month");
     });
 
     test("should list pending tasks", async () => {
       const result = await handleTaskPrioritizationPrompt({});
 
       // Check that the prompt structure includes task analysis sections
-      expect(result.messages[0].content.text).toContain("tasks need prioritization");
-      expect(result.messages[0].content.text).toContain("**Recommended Priority**");
-      expect(result.messages[0].content.text).toContain("**Reasoning**");
+      expect(result.messages[0]?.content.text).toContain("tasks need prioritization");
+      expect(result.messages[0]?.content.text).toContain("**Recommended Priority**");
+      expect(result.messages[0]?.content.text).toContain("**Reasoning**");
     });
   });
 
@@ -212,9 +214,9 @@ describe("Prompt Handlers", () => {
 
       expect(result).toBeDefined();
       expect(result.description).toBe("Plan a focused work sprint from your available tasks and capacity");
-      expect(result.messages[0].content.text).toContain("Sprint Planning");
-      expect(result.messages[0].content.text).toContain("**Duration**: 1 week");
-      expect(result.messages[0].content.text).toContain("**Capacity**: normal");
+      expect(result.messages[0]?.content.text).toContain("Sprint Planning");
+      expect(result.messages[0]?.content.text).toContain("**Duration**: 1 week");
+      expect(result.messages[0]?.content.text).toContain("**Capacity**: normal");
     });
 
     test("should include capacity guidelines", async () => {
@@ -224,18 +226,18 @@ describe("Prompt Handlers", () => {
         focus_area: "feature development",
       });
 
-      expect(result.messages[0].content.text).toContain("**Duration**: 2 weeks");
-      expect(result.messages[0].content.text).toContain("**Capacity**: heavy");
-      expect(result.messages[0].content.text).toContain("**Focus Area**: feature development");
-      expect(result.messages[0].content.text).toContain("Aggressive timeline");
+      expect(result.messages[0]?.content.text).toContain("**Duration**: 2 weeks");
+      expect(result.messages[0]?.content.text).toContain("**Capacity**: heavy");
+      expect(result.messages[0]?.content.text).toContain("**Focus Area**: feature development");
+      expect(result.messages[0]?.content.text).toContain("Aggressive timeline");
     });
 
     test("should categorize available tasks by priority", async () => {
       const result = await handleSprintPlanningPrompt({});
 
-      expect(result.messages[0].content.text).toContain("High priority items");
-      expect(result.messages[0].content.text).toContain("Sprint Goal");
-      expect(result.messages[0].content.text).toContain("Task Selection");
+      expect(result.messages[0]?.content.text).toContain("High priority items");
+      expect(result.messages[0]?.content.text).toContain("Sprint Goal");
+      expect(result.messages[0]?.content.text).toContain("Task Selection");
     });
   });
 
@@ -245,28 +247,28 @@ describe("Prompt Handlers", () => {
 
       expect(result).toBeDefined();
       expect(result.description).toBe("Analyze todo list for cleanup opportunities and archival suggestions");
-      expect(result.messages[0].content.text).toContain("Cleanup Recommendations");
-      expect(result.messages[0].content.text).toContain("**Total Tasks**:");
-      expect(result.messages[0].content.text).toContain("Completed:");
+      expect(result.messages[0]?.content.text).toContain("Cleanup Recommendations");
+      expect(result.messages[0]?.content.text).toContain("**Total Tasks**:");
+      expect(result.messages[0]?.content.text).toContain("Completed:");
     });
 
     test("should include age threshold and completed task setting", async () => {
       const result = await handleCleanupSuggestionsPrompt({
         age_threshold: "60 days",
-        include_completed: false,
+        include_completed: "false",
       });
 
-      expect(result.messages[0].content.text).toContain("**Age Threshold**: Tasks older than 60 days");
-      expect(result.messages[0].content.text).toContain("**Include Completed**: No");
+      expect(result.messages[0]?.content.text).toContain("**Age Threshold**: Tasks older than 60 days");
+      expect(result.messages[0]?.content.text).toContain("**Include Completed**: No");
     });
 
     test("should show completed tasks when included", async () => {
       const result = await handleCleanupSuggestionsPrompt({
-        include_completed: true,
+        include_completed: "true",
       });
 
-      expect(result.messages[0].content.text).toContain("**Include Completed**: Yes");
-      expect(result.messages[0].content.text).toContain("Completed Task Cleanup");
+      expect(result.messages[0]?.content.text).toContain("**Include Completed**: Yes");
+      expect(result.messages[0]?.content.text).toContain("Completed Task Cleanup");
     });
   });
 
@@ -286,8 +288,8 @@ describe("Prompt Handlers", () => {
         expect(result).toBeDefined();
         expect(result.messages).toHaveLength(1);
         expect(result.description).toBeDefined();
-        expect(result.messages[0].role).toBe("user");
-        expect(result.messages[0].content.type).toBe("text");
+        expect(result.messages[0]?.role).toBe("user");
+        expect(result.messages[0]?.content.type).toBe("text");
       }
     });
   });
@@ -298,12 +300,12 @@ describe("Prompt Handlers", () => {
       const sprintResult = await handleSprintPlanningPrompt({});
 
       // Both should reference the current project context
-      expect(statusResult.messages[0].content.text).toContain("Status Review");
-      expect(sprintResult.messages[0].content.text).toContain("Sprint Planning");
+      expect(statusResult.messages[0]?.content.text).toContain("Status Review");
+      expect(sprintResult.messages[0]?.content.text).toContain("Sprint Planning");
 
       // Both should include todo list information
-      expect(statusResult.messages[0].content.text).toContain("Test Project Tasks");
-      expect(sprintResult.messages[0].content.text).toContain("Test Project Tasks");
+      expect(statusResult.messages[0]?.content.text).toContain("Test Project Tasks");
+      expect(sprintResult.messages[0]?.content.text).toContain("Test Project Tasks");
     });
   });
 });

@@ -1,25 +1,23 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { 
-  TodoStatusSchema, 
-  TodoPrioritySchema, 
+import {
+  TodoStatusSchema,
+  TodoPrioritySchema,
 } from "../types/schemas.js";
-import { 
-  handleTodoWrite, 
-  handleTodoWriteBatch, 
-  handleTodoDelete, 
-  handleTodoDeleteBatch, 
-  handleTodoListMoveBatch, 
+import {
+  handleTodoWriteBatch,
+  handleTodoDeleteBatch,
+  handleTodoListMoveBatch,
 } from "../handlers/todo.js";
-import { 
-  handleProjectUpdate, 
+import {
+  handleProjectUpdate,
 } from "../handlers/project.js";
-import { 
-  handleTodoListCreate, 
-  handleTodoListUpdate, 
-  handleTodoListDelete, 
+import {
+  handleTodoListCreate,
+  handleTodoListUpdate,
+  handleTodoListDelete,
 } from "../handlers/todo-list.js";
-import { 
+import {
   handleProjectPlanningPrompt,
   handleStatusReviewPrompt,
   handleTaskPrioritizationPrompt,
@@ -30,8 +28,8 @@ import { getTodosByListId, getTodoById } from "../database/todo.js";
 import { getCurrentProject } from "../database/project.js";
 import { getTodoListById, getAllTodoListsForCurrentProject } from "../database/todo-list.js";
 import { createResourceResponse } from "../utils/response.js";
-import { 
-  RESOURCE_URIS, 
+import {
+  RESOURCE_URIS,
 } from "../handlers/resources.js";
 
 /**
@@ -71,13 +69,9 @@ MCP Resources provide efficient, discoverable access to todo data without tool i
 ## Tools (Write Operations)
 
 ### Core Todo Management
-- **todo-write**: Create new todos or update existing ones (supports PATCH operations). Use when adding tasks to your plan or updating task status/priority.
-- **todo-delete**: Remove a single todo. Use when a task is no longer relevant or was added by mistake.
-
-### Batch Operations  
-- **todo-write-batch**: Create or update multiple todos in a single transaction. Use when adding several related tasks or making bulk status updates.
-- **todo-delete-batch**: Delete multiple todos at once. Use when cleaning up completed sprints or removing obsolete tasks.
-- **todo-list-move-batch**: Move multiple todos between different lists. Use when reorganizing tasks across projects or categories.
+- **todo-write**: Create or update todo items (single or batch). Accepts an array of todos - use single-element arrays for individual operations. Supports PATCH operations for updates.
+- **todo-delete**: Delete todo items (single or batch). Accepts an array of IDs - use single-element arrays for individual deletions.
+- **todo-list-move**: Move todo items between lists (single or batch). Accepts an array of IDs - use single-element arrays for individual moves.
 
 ### Project Management
 - **project-update**: Update project name or default todo list. Use when renaming projects or changing organizational structure.
@@ -106,7 +100,7 @@ Show priority using visual cues:
 **When starting a new project or plan:**
 1. Access \`todo://project/current\` resource to understand current context
 2. Use \`todo-list-create\` tool to organize tasks by theme/phase if needed
-3. Use \`todo-write-batch\` tool to add multiple planned tasks efficiently
+3. Use \`todo-write\` tool to add multiple planned tasks efficiently (with array of todos)
 
 **During active work:**
 1. Access \`todo://todos/all\` resource to see current priorities and status
@@ -159,7 +153,7 @@ Each prompt automatically incorporates your current project state, todo lists, a
   });
 
   // Register resource handlers for exposing data as discoverable resources
-  
+
   // Static resources
   server.resource(
     "current-project",
@@ -235,12 +229,12 @@ Each prompt automatically incorporates your current project state, todo lists, a
         if (!project?.default_todo_list_id) {
           throw new Error("No default todo list available");
         }
-        
+
         const todoList = await getTodoListById(project.default_todo_list_id);
         if (!todoList) {
           throw new Error("Default todo list not found");
         }
-        
+
         return createResourceResponse(RESOURCE_URIS.LIST_DEFAULT, todoList);
       } catch (error) {
         console.error("Error reading default todo list resource:", error);
@@ -262,16 +256,16 @@ Each prompt automatically incorporates your current project state, todo lists, a
       try {
         const todoIdStr = uri.pathname.split("/").pop();
         const todoId = parseInt(todoIdStr || "", 10);
-        
+
         if (isNaN(todoId)) {
           throw new Error(`Invalid todo ID: ${todoIdStr}`);
         }
-        
+
         const todo = await getTodoById(todoId);
         if (!todo) {
           throw new Error(`Todo with ID ${todoId} not found`);
         }
-        
+
         return createResourceResponse(uri.href, todo);
       } catch (error) {
         console.error("Error reading todo resource:", error);
@@ -292,11 +286,11 @@ Each prompt automatically incorporates your current project state, todo lists, a
       try {
         const listIdStr = uri.pathname.split("/").pop();
         const listId = parseInt(listIdStr || "", 10);
-        
+
         if (isNaN(listId)) {
           throw new Error(`Invalid todo list ID: ${listIdStr}`);
         }
-        
+
         const todos = await getTodosByListId(listId);
         return createResourceResponse(uri.href, { todos });
       } catch (error) {
@@ -318,16 +312,16 @@ Each prompt automatically incorporates your current project state, todo lists, a
       try {
         const listIdStr = uri.pathname.split("/").pop();
         const listId = parseInt(listIdStr || "", 10);
-        
+
         if (isNaN(listId)) {
           throw new Error(`Invalid todo list ID: ${listIdStr}`);
         }
-        
+
         const todoList = await getTodoListById(listId);
         if (!todoList) {
           throw new Error(`Todo list with ID ${listId} not found`);
         }
-        
+
         return createResourceResponse(uri.href, todoList);
       } catch (error) {
         console.error("Error reading todo list resource:", error);
@@ -336,46 +330,20 @@ Each prompt automatically incorporates your current project state, todo lists, a
     },
   );
 
-  // Tool to write or update a todo item
+
   server.tool(
     "todo-write",
-    'Create a new todo item or update an existing one with PATCH support. For new todos, content is required. For updates, only specify the fields you want to change.\n\nExamples:\n• Create: {id: 1, content: "Fix bug", priority: "high"}\n• Update status only: {id: 1, status: "completed"}\n• Update multiple fields: {id: 1, status: "in_progress", priority: "high"}',
-    {
-      id: z.number().describe("The unique identifier for the todo item."),
-      content: z
-        .string()
-        .optional()
-        .describe(
-          "The content or description of the todo item. Required for new todos, optional for updates.",
-        ),
-      priority: TodoPrioritySchema.optional().describe(
-        "Priority level: 'high', 'medium', or 'low'. Defaults to 'medium'.",
-      ),
-      status: TodoStatusSchema.optional().describe(
-        "Status: 'pending', 'in_progress', or 'completed'. Defaults to 'pending'.",
-      ),
-      todo_list_id: z
-        .number()
-        .optional()
-        .describe(
-          "The ID of the todo list. Defaults to the current project's default todo list.",
-        ),
-    },
-    async ({ id, content, priority, status, todo_list_id }) => {
-      return await handleTodoWrite({
-        id,
-        content,
-        priority,
-        status,
-        todo_list_id,
-      });
-    },
-  );
+    `Create or update todo items.
 
-  // Tool to write or update multiple todo items in batch
-  server.tool(
-    "todo-write-batch",
-    'Create or update multiple todo items in a single batch operation with transaction support. Each todo in the array supports PATCH semantics - for new todos, content is required; for updates, only specify the fields you want to change.\n\nExamples:\n• Create multiple: [{id: 1, content: "Task 1", priority: "high"}, {id: 2, content: "Task 2"}]\n• Update multiple: [{id: 1, status: "completed"}, {id: 2, priority: "low"}]\n• Mixed operations: [{id: 1, content: "New task"}, {id: 2, status: "completed"}]',
+Accepts an array of todos - use a single-element array for individual operations or multiple elements for batch operations.
+Each todo supports PATCH semantics - for new todos, content is required; for updates, only specify the fields you want to change.
+
+Examples:
+
+• Single todo: {todos: [{id: 1, content: "Fix bug", priority: "high"}]}
+• Update single: {todos: [{id: 1, status: "completed"}]}
+• Create multiple: {todos: [{id: 1, content: "Task 1", priority: "high"}, {id: 2, content: "Task 2"}]}
+• Update multiple: {todos: [{id: 1, status: "completed"}, {id: 2, priority: "low"}]}`,
     {
       todos: z.array(z.object({
         id: z.number().describe("The unique identifier for the todo item."),
@@ -406,22 +374,19 @@ Each prompt automatically incorporates your current project state, todo lists, a
 
 
 
-  // Tool to delete a specific todo item
+
+  // Tool to delete todo items (supports single item or batch operations)  
   server.tool(
     "todo-delete",
-    'Delete a specific todo item by its ID. This permanently removes the todo from the database.\n\nExample:\n• Delete todo: {id: 1}\n  Returns: "Todo 1 deleted successfully."',
-    {
-      id: z.number().describe("The ID of the todo item to delete."),
-    },
-    async ({ id }) => {
-      return await handleTodoDelete({ id });
-    },
-  );
+    `Delete todo items by their IDs with transaction support.
 
-  // Tool to delete multiple todo items in batch
-  server.tool(
-    "todo-delete-batch",
-    "Delete multiple todo items by their IDs in a single batch operation with transaction support. This permanently removes the todos from the database.\n\nExamples:\n• Delete multiple: {todo_ids: [1, 2, 3]}\n• Delete single in batch: {todo_ids: [5]}\n  Returns batch operation results with success/failure count",
+Accepts an array of IDs - use a single-element array for individual deletions or multiple elements for batch operations.
+This permanently removes the todos from the database. Returns operation results with success/failure count.
+
+Examples:
+
+• Delete single: {todo_ids: [1]}
+• Delete multiple: {todo_ids: [1, 2, 3]}`,
     {
       todo_ids: z.array(z.number()).min(1).describe("Array of todo item IDs to delete. At least one ID is required."),
     },
@@ -430,10 +395,18 @@ Each prompt automatically incorporates your current project state, todo lists, a
     },
   );
 
-  // Tool to move multiple todo items between lists in batch
+  // Tool to move todo items between lists (supports single item or batch operations)
   server.tool(
-    "todo-list-move-batch",
-    "Move multiple todo items to a different todo list in a single batch operation with transaction support. This updates the todo_list_id for all specified todos.\n\nExamples:\n• Move multiple: {todo_ids: [1, 2, 3], target_todo_list_id: 5}\n• Move single in batch: {todo_ids: [7], target_todo_list_id: 2}\n  Returns batch operation results with success/failure count",
+    "todo-list-move",
+    `Move todo items to a different todo list with transaction support.
+
+Accepts an array of IDs - use a single-element array for individual moves or multiple elements for batch operations.
+This updates the todo_list_id for all specified todos. Returns operation results with success/failure count.
+
+Examples:
+
+• Move single: {todo_ids: [1], target_todo_list_id: 5}
+• Move multiple: {todo_ids: [1, 2, 3], target_todo_list_id: 5}`,
     {
       todo_ids: z.array(z.number()).min(1).describe("Array of todo item IDs to move. At least one ID is required."),
       target_todo_list_id: z.number().describe("The ID of the target todo list to move the todos to."),
@@ -447,7 +420,13 @@ Each prompt automatically incorporates your current project state, todo lists, a
   // Tool to update current project
   server.tool(
     "project-update",
-    'Update the current project\'s name or default todo list.\n\nExamples:\n• Update name: {name: "New Project Name"}\n• Update default todo list: {default_todo_list_id: 2}\n• Update both: {name: "New Name", default_todo_list_id: 2}',
+    `Update the current project's name or default todo list.
+
+Examples:
+
+• Update name: {name: "New Project Name"}
+• Update default todo list: {default_todo_list_id: 2}
+• Update both: {name: "New Name", default_todo_list_id: 2}`,
     {
       name: z.string().optional().describe("The new name for the project."),
       default_todo_list_id: z
@@ -465,7 +444,12 @@ Each prompt automatically incorporates your current project state, todo lists, a
   // Tool to create a new todo list
   server.tool(
     "todo-list-create",
-    'Create a new todo list for the current project.\n\nExamples:\n• Create with name only: {name: "Shopping List"}\n• Create with name and description: {name: "Work Tasks", description: "Tasks related to work project"}',
+    `Create a new todo list for the current project.
+
+Examples:
+
+• Create with name only: {name: "Shopping List"}
+• Create with name and description: {name: "Work Tasks", description: "Tasks related to work project"}`,
     {
       name: z.string().describe("The name of the new todo list."),
       description: z
@@ -481,7 +465,13 @@ Each prompt automatically incorporates your current project state, todo lists, a
   // Tool to update a todo list
   server.tool(
     "todo-list-update",
-    'Update an existing todo list\'s name or description.\n\nExamples:\n• Update name only: {id: 1, name: "Updated List"}\n• Update description only: {id: 1, description: "New description"}\n• Update both: {id: 1, name: "New Name", description: "New description"}',
+    `Update an existing todo list's name or description.
+
+Examples:
+
+• Update name only: {id: 1, name: "Updated List"}
+• Update description only: {id: 1, description: "New description"}
+• Update both: {id: 1, name: "New Name", description: "New description"}`,
     {
       id: z.number().describe("The ID of the todo list to update."),
       name: z.string().optional().describe("The new name for the todo list."),
@@ -498,7 +488,11 @@ Each prompt automatically incorporates your current project state, todo lists, a
   // Tool to delete a todo list
   server.tool(
     "todo-list-delete",
-    "Delete a todo list and all its todos. Cannot delete the default todo list for a project.\n\nExample:\n• Delete list: {id: 2}",
+    `Delete a todo list and all its todos. Cannot delete the default todo list for a project.
+
+Example:
+
+• Delete list: {id: 2}`,
     {
       id: z.number().describe("The ID of the todo list to delete."),
     },
@@ -510,7 +504,7 @@ Each prompt automatically incorporates your current project state, todo lists, a
   // ========================================
   // PROMPT REGISTRATIONS
   // ========================================
-  
+
   // Project Planning Prompt - Break down goals into actionable tasks
   server.prompt(
     "project-planning",
@@ -540,7 +534,7 @@ Each prompt automatically incorporates your current project state, todo lists, a
 
   // Task Prioritization Prompt - Analyze and suggest priority levels
   server.prompt(
-    "task-prioritization", 
+    "task-prioritization",
     "Analyze pending tasks and suggest priority levels based on various criteria like urgency, impact, effort, and dependencies",
     {
       criteria: z.enum(["urgency", "impact", "effort", "dependencies", "balanced"]).optional().describe("Primary criteria for prioritization analysis"),
@@ -571,7 +565,7 @@ Each prompt automatically incorporates your current project state, todo lists, a
     "Analyze the todo list for cleanup opportunities, suggesting tasks to archive, delete, or reorganize based on age and patterns",
     {
       age_threshold: z.string().optional().describe("Age threshold for considering tasks stale (e.g., '30 days', '2 months')"),
-      include_completed: z.boolean().optional().describe("Whether to include completed tasks in cleanup analysis"),
+      include_completed: z.string().optional().describe("Whether to include completed tasks in cleanup analysis (true/false)"),
     },
     async ({ age_threshold, include_completed }) => {
       return await handleCleanupSuggestionsPrompt({ age_threshold, include_completed });

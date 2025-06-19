@@ -3,7 +3,8 @@ import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import "./utils/test-logger"; // Auto-suppress verbose output during tests
 import { getTodoById } from "../src/database/todo";
 import { createTodoList } from "../src/database/todo-list";
-import { handleTodoWrite, handleTodoWriteBatch, handleTodoDelete, handleTodoDeleteBatch, handleTodoListMoveBatch, TodoStatusSchema, TodoPrioritySchema } from "../src/index";
+import { handleTodoWriteBatch, handleTodoDeleteBatch, handleTodoListMoveBatch, TodoStatusSchema, TodoPrioritySchema } from "../src/index";
+import { handleTodoWrite, handleTodoDelete } from "../src/handlers/todo";
 import { clearDatabaseConnectionCache } from "../src/database/connection";
 
 // Test isolation setup

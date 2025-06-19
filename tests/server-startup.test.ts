@@ -191,7 +191,7 @@ describe("Server Startup with Migrations", () => {
     expect(server).toBeDefined();
     
     // Test that we can call a tool handler directly
-    const { handleTodoWrite } = await import("../src/index");
+    const { handleTodoWrite } = await import("../src/handlers/todo");
     const { getTodosByListId } = await import("../src/database/todo");
     
     // Create a todo

@@ -10,9 +10,7 @@ export { createErrorResponse, createSuccessResponse } from "./utils/response.js"
 
 // Export handlers for testing and external use
 export {
-  handleTodoWrite,
   handleTodoWriteBatch,
-  handleTodoDelete,
   handleTodoDeleteBatch,
   handleTodoListMoveBatch,
 } from "./handlers/todo.js";
@@ -56,15 +54,13 @@ export async function main() {
   console.log("MCP Todo Server is running.");
   console.log(
     `Available tools:
-- todo-write - Create/update todo items
-- todo-write-batch - Create/update multiple todos
-- todo-delete - Delete a todo item
-- todo-delete-batch - Delete multiple todos
-- todo-list-move-batch - Move todos between lists
-- project-update - Update project settings
-- todo-list-create - Create new todo lists
-- todo-list-update - Update todo list details
-- todo-list-delete - Delete todo lists
+- todo-write (Write Todos) - Create/update todo items (single or batch)
+- todo-delete (Delete Todos) - Delete todo items (single or batch)
+- todo-list-move (Move Todos) - Move todos between lists (single or batch)
+- project-update (Update Project) - Update project settings
+- todo-list-create (Create Todo List) - Create new todo lists
+- todo-list-update (Update Todo List) - Update todo list details
+- todo-list-delete (Delete Todo List) - Delete todo lists
 
 Available resources (for reading data efficiently):
 - todo://project/current - Current project details

@@ -1,8 +1,7 @@
-import { z } from "zod";
+import type { GetPromptResult, PromptMessage } from "@modelcontextprotocol/sdk/types.js";
 import { getTodosByListId } from "../database/todo.js";
 import { getCurrentProject } from "../database/project.js";
 import { getAllTodoListsForCurrentProject } from "../database/todo-list.js";
-import { GetPromptResult, PromptMessage } from "@modelcontextprotocol/sdk/types.js";
 
 /**
  * Prompt Handler Functions
@@ -77,7 +76,7 @@ After your analysis, I can use the todo management tools to:
   } catch (error) {
     console.error("Error in project planning prompt:", error);
     
-    const fallbackText = `I want to achieve this goal${timeframeText}: "${goal}"
+    const fallbackText = `I want to achieve this goal${timeframe ? ` within ${timeframe}` : ""}: "${goal}"
 
 Please help me break this down into specific, actionable tasks with priority levels and organization suggestions.`;
 
@@ -136,7 +135,7 @@ export async function handleStatusReviewPrompt({
     let todoDetails = "";
     if (filteredTodos.length > 0) {
       todoDetails = "\n\nCurrent todos:\n" + filteredTodos.map(todo => 
-        `- [${todo.status === "completed" ? "✅" : todo.status === "in_progress" ? "⏳" : "🔲"}] ${todo.content} (${todo.priority} priority)`
+        `- [${todo.status === "completed" ? "✅" : todo.status === "in_progress" ? "⏳" : "🔲"}] ${todo.content} (${todo.priority} priority)`,
       ).join("\n");
     }
 
@@ -218,7 +217,7 @@ export async function handleTaskPrioritizationPrompt({
     // Get pending and in-progress todos
     const allTodos = await getTodosByListId();
     const pendingTodos = allTodos.filter(todo => 
-      todo.status === "pending" || todo.status === "in_progress"
+      todo.status === "pending" || todo.status === "in_progress",
     );
 
     const prioritizationCriteria = criteria || "balanced";
@@ -227,7 +226,7 @@ export async function handleTaskPrioritizationPrompt({
     let todosList = "";
     if (pendingTodos.length > 0) {
       todosList = "\n\nTasks to prioritize:\n" + pendingTodos.map((todo, index) => 
-        `${index + 1}. ${todo.content} (currently ${todo.priority} priority, ${todo.status})`
+        `${index + 1}. ${todo.content} (currently ${todo.priority} priority, ${todo.status})`,
       ).join("\n");
     } else {
       todosList = "\n\nNo pending tasks found to prioritize.";
@@ -280,7 +279,7 @@ After your analysis, I can implement the changes using:
   } catch (error) {
     console.error("Error in task prioritization prompt:", error);
     
-    const fallbackText = `Please help me prioritize my pending tasks using ${criteria || "balanced"} criteria${deadlineText}.`;
+    const fallbackText = `Please help me prioritize my pending tasks using ${criteria || "balanced"} criteria${deadline ? ` with deadline: ${deadline}` : ""}.`;
 
     return {
       description: "Analyze pending tasks and suggest priority levels based on various criteria",
@@ -322,10 +321,10 @@ export async function handleSprintPlanningPrompt({
 
     // Categorize todos by status and priority
     const highPriorityTodos = allTodos.filter(todo => 
-      todo.priority === "high" && (todo.status === "pending" || todo.status === "in_progress")
+      todo.priority === "high" && (todo.status === "pending" || todo.status === "in_progress"),
     );
     const availableTodos = allTodos.filter(todo => 
-      todo.status === "pending" || todo.status === "in_progress"
+      todo.status === "pending" || todo.status === "in_progress",
     );
 
     let todosByPriority = "";
@@ -431,7 +430,7 @@ export async function handleCleanupSuggestionsPrompt({
   include_completed,
 }: {
   age_threshold?: string;
-  include_completed?: boolean;
+  include_completed?: string;
 }): Promise<GetPromptResult> {
   try {
     // Get all todos and analyze patterns
@@ -439,7 +438,7 @@ export async function handleCleanupSuggestionsPrompt({
     const project = await getCurrentProject();
     
     const ageThreshold = age_threshold || "30 days";
-    const shouldIncludeCompleted = include_completed ?? true;
+    const shouldIncludeCompleted = include_completed === "true" || include_completed === undefined;
 
     // Categorize todos for analysis
     const completedTodos = allTodos.filter(todo => todo.status === "completed");
@@ -538,7 +537,7 @@ After review, implement changes using:
   } catch (error) {
     console.error("Error in cleanup suggestions prompt:", error);
     
-    const fallbackText = `Please analyze my todo list and suggest cleanup actions for tasks older than ${age_threshold || "30 days"}${include_completed ? ", including completed tasks" : ""}.`;
+    const fallbackText = `Please analyze my todo list and suggest cleanup actions for tasks older than ${age_threshold || "30 days"}${include_completed === "true" ? ", including completed tasks" : ""}.`;
 
     return {
       description: "Analyze todo list for cleanup opportunities and archival suggestions",

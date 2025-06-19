@@ -1,4 +1,5 @@
 import { describe, test, expect } from "bun:test";
+import "./utils/test-logger"; // Auto-suppress verbose output during tests
 
 // ---------------------------------------------------------------------------
 // Legacy notice:

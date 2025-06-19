@@ -51,7 +51,10 @@ class TestLogger {
       
       // Suppress expected test errors and migration errors
       const suppressedErrorPatterns = [
-        /Error in Todo.*handler:/,                    // Expected test errors
+        /Error in.*handler:/,                         // All handler errors
+        /Error in.*prompt:/,                          // All prompt errors
+        /Error listing dynamic resources:/,           // Resource listing errors
+        /Error reading resource:/,                    // Resource reading errors
         /Error applying migrations:/,                 // Migration errors
         /DrizzleError: Failed to run the query/,      // Drizzle migration errors
         /SQLiteError: table.*already exists/,         // Table already exists errors
